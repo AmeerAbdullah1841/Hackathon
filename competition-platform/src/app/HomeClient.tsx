@@ -79,9 +79,10 @@ export function HomeClient({ initialAdminStatus }: HomeClientProps) {
   const [teams, setTeams] = useState<Team[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
+  // Always start with the server-provided status - don't override it
   const [adminStatus, setAdminStatus] = useState<
     "loading" | "authenticated" | "unauthenticated"
-  >(initialAdminStatus);
+  >(initialAdminStatus === "authenticated" ? "authenticated" : "unauthenticated");
   const [authMode, setAuthMode] = useState<"admin" | "team">("admin");
   const [adminLogin, setAdminLogin] = useState({ username: "", password: "" });
   const [adminError, setAdminError] = useState<string | null>(null);
@@ -177,9 +178,25 @@ export function HomeClient({ initialAdminStatus }: HomeClientProps) {
     }
   }, []);
 
-  // Removed client-side session check on mount - trust server-side authentication
-  // The server already checks for valid session cookies and validates them
-  // Only check session when explicitly needed (e.g., after login attempt)
+  // On mount, verify server-side authentication status
+  // If server says unauthenticated, ensure we stay unauthenticated
+  useEffect(() => {
+    // Always respect the server's initial status
+    // If server says unauthenticated, don't check for session (prevents stale cookies)
+    if (initialAdminStatus === "unauthenticated") {
+      setAdminStatus("unauthenticated");
+      // Don't check session - server already determined we're not authenticated
+      return;
+    }
+    
+    // Only verify session if server says we might be authenticated
+    if (initialAdminStatus === "authenticated") {
+      // Verify the session is still valid
+      fetchAdminSession().catch(() => {
+        setAdminStatus("unauthenticated");
+      });
+    }
+  }, [initialAdminStatus, fetchAdminSession]);
 
   useEffect(() => {
     if (adminStatus === "authenticated") {

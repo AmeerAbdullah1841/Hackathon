@@ -220,10 +220,13 @@ export const getDb = async () => {
       dbInitializationError = error instanceof Error ? error : new Error(String(error));
       // Don't throw here - let individual queries handle the error
       console.error('Database initialization failed:', dbInitializationError);
+      // Don't mark as initialized so we can retry later
+      dbInitialized = false;
     }
   }
   
   // If initialization failed, throw on first query attempt
+  // But only if we're sure it failed (not just not initialized yet)
   if (dbInitializationError) {
     throw dbInitializationError;
   }

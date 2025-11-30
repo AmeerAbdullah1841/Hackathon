@@ -31,12 +31,13 @@ export default async function Page() {
         authenticated = await Promise.race([
           findAdminSession(token),
           new Promise<boolean>((resolve) => 
-            setTimeout(() => resolve(false), 5000)
+            setTimeout(() => resolve(false), 3000)
           )
         ]);
       } catch (error) {
         // On any error (DB connection, etc), treat as unauthenticated
-        console.error("Error checking admin session:", error);
+        // This is expected if database is not available - page should still render
+        console.error("Error checking admin session (non-fatal):", error);
         authenticated = false;
       }
     }
