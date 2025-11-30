@@ -9,11 +9,18 @@ const getPool = (): Pool => {
     const connectionString = process.env.POSTGRES_URL || process.env.DATABASE_URL;
     
     if (!connectionString) {
-      throw new Error(
-        `Missing PostgreSQL connection string.\n` +
-        `Please set POSTGRES_URL or DATABASE_URL in .env.local\n` +
-        `Current env check: POSTGRES_URL=${!!process.env.POSTGRES_URL}, DATABASE_URL=${!!process.env.DATABASE_URL}`
-      );
+      const errorMsg = process.env.VERCEL 
+        ? `Missing PostgreSQL connection string on Vercel.\n` +
+          `Please set POSTGRES_URL or DATABASE_URL in Vercel project settings:\n` +
+          `1. Go to your Vercel project\n` +
+          `2. Settings → Environment Variables\n` +
+          `3. Add POSTGRES_URL with your database connection string\n` +
+          `4. Redeploy the application`
+        : `Missing PostgreSQL connection string.\n` +
+          `Please set POSTGRES_URL or DATABASE_URL in .env.local\n` +
+          `Current env check: POSTGRES_URL=${!!process.env.POSTGRES_URL}, DATABASE_URL=${!!process.env.DATABASE_URL}`;
+      
+      throw new Error(errorMsg);
     }
 
     pool = new Pool({
@@ -65,6 +72,12 @@ const initializeSchema = async () => {
   }
 
   try {
+    // Check if connection string exists before trying to connect
+    const connectionString = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+    if (!connectionString) {
+      throw new Error('POSTGRES_URL or DATABASE_URL environment variable is not set');
+    }
+
     const pool = getPool();
     
     // Create teams table
@@ -188,12 +201,25 @@ const initializeSchema = async () => {
 
 // Cache initialization to avoid repeated schema checks
 let dbInitialized = false;
+let dbInitializationError: Error | null = null;
 
 export const getDb = async () => {
-  if (!dbInitialized) {
-    await initializeSchema();
-    dbInitialized = true;
+  if (!dbInitialized && !dbInitializationError) {
+    try {
+      await initializeSchema();
+      dbInitialized = true;
+    } catch (error) {
+      dbInitializationError = error instanceof Error ? error : new Error(String(error));
+      // Don't throw here - let individual queries handle the error
+      console.error('Database initialization failed:', dbInitializationError);
+    }
   }
+  
+  // If initialization failed, throw on first query attempt
+  if (dbInitializationError) {
+    throw dbInitializationError;
+  }
+  
   // Return sql template tag function
   return sql;
 };
