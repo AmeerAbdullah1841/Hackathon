@@ -46,7 +46,15 @@ const getPool = (): Pool => {
 
 // Create a sql template tag function similar to @vercel/postgres
 export const sql = (strings: TemplateStringsArray, ...values: any[]) => {
-  const pool = getPool();
+  // Lazy get pool - only when query is executed
+  let pool: Pool;
+  try {
+    pool = getPool();
+  } catch (error) {
+    // Return a rejected promise if pool can't be created
+    return Promise.reject(error) as Promise<{ rows: any[]; rowCount: number }>;
+  }
+  
   const query = strings.reduce((acc, str, i) => {
     return acc + str + (i < values.length ? `$${i + 1}` : '');
   }, '');
