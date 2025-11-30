@@ -3,20 +3,37 @@ import { cookies } from "next/headers";
 import { ADMIN_SESSION_COOKIE } from "@/lib/admin-auth";
 import { HomeClient } from "./HomeClient";
 
+// Force dynamic rendering since we use cookies()
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function Page() {
   // Force unauthenticated by default - require explicit login
   let authenticated = false;
   
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get(ADMIN_SESSION_COOKIE)?.value ?? "";
+    // Safely get cookies - this might fail in some edge cases
+    let token = "";
+    try {
+      const cookieStore = await cookies();
+      token = cookieStore.get(ADMIN_SESSION_COOKIE)?.value ?? "";
+    } catch (cookieError) {
+      // If cookies() fails, just continue without token
+      console.error("Error reading cookies:", cookieError);
+    }
     
     // Only check session if we have a valid token
     if (token && token.trim().length > 0) {
       try {
         const { findAdminSession } = await import("@/lib/store");
         // Verify session exists in database
-        authenticated = await findAdminSession(token);
+        // Use Promise.race with timeout to prevent hanging
+        authenticated = await Promise.race([
+          findAdminSession(token),
+          new Promise<boolean>((resolve) => 
+            setTimeout(() => resolve(false), 5000)
+          )
+        ]);
       } catch (error) {
         // On any error (DB connection, etc), treat as unauthenticated
         console.error("Error checking admin session:", error);
@@ -24,7 +41,7 @@ export default async function Page() {
       }
     }
 
-    // Always pass the authentication status
+    // Always render the page, even if authentication check failed
     return (
       <HomeClient
         initialAdminStatus={authenticated ? "authenticated" : "unauthenticated"}
@@ -32,6 +49,7 @@ export default async function Page() {
     );
   } catch (error) {
     // If anything fails, always render as unauthenticated
+    // Never throw - always render something
     console.error("Page render error:", error);
     return (
       <HomeClient
