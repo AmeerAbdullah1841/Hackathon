@@ -7,14 +7,14 @@ import { LogoutButton } from "./LogoutButton";
 import { findAssignmentById, findTeamById, getHackathonStatus } from "@/lib/store";
 
 type Params = {
-  params: {
+  params: Promise<{
     teamId: string;
     assignmentId: string;
-  };
+  }>;
 };
 
 export default async function AssignmentDetailPage({ params }: Params) {
-  const { teamId, assignmentId } = await Promise.resolve(params);
+  const { teamId, assignmentId } = await params;
 
   const team = await findTeamById(teamId);
   if (!team) {

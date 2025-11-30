@@ -36,6 +36,7 @@ type Submission = {
   flag: string;
   createdAt: string;
   updatedAt: string;
+  status?: "pending" | "approved" | "rejected";
 };
 
 type Assignment = {
@@ -176,16 +177,9 @@ export function HomeClient({ initialAdminStatus }: HomeClientProps) {
     }
   }, []);
 
-  useEffect(() => {
-    let mounted = true;
-    fetchAdminSession().then(() => {
-      if (!mounted) return;
-    });
-    return () => {
-      mounted = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run once on mount
+  // Removed client-side session check on mount - trust server-side authentication
+  // The server already checks for valid session cookies and validates them
+  // Only check session when explicitly needed (e.g., after login attempt)
 
   useEffect(() => {
     if (adminStatus === "authenticated") {

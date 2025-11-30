@@ -3,16 +3,16 @@ import { NextResponse } from "next/server";
 import { deleteTeamSubmissions, resetTeamPassword } from "@/lib/store";
 
 type Params = {
-  params: {
+  params: Promise<{
     teamId: string;
-  };
+  }>;
 };
 
 export async function PATCH(
   request: Request,
   { params }: Params,
 ) {
-  const { teamId } = await Promise.resolve(params);
+  const { teamId } = await params;
   const payload = await request.json().catch(() => null);
   const action = payload?.action;
 

@@ -9,13 +9,13 @@ export const revalidate = 0;
 export const dynamic = "force-dynamic";
 
 type Params = {
-  params: {
+  params: Promise<{
     teamId: string;
-  };
+  }>;
 };
 
 export default async function TeamPage({ params }: Params) {
-  const { teamId } = await Promise.resolve(params);
+  const { teamId } = await params;
   const team = await findTeamById(teamId);
 
   if (!team) {

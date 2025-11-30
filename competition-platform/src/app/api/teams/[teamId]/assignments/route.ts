@@ -3,13 +3,13 @@ import { NextResponse } from "next/server";
 import { listAssignmentsForTeam } from "@/lib/store";
 
 type Params = {
-  params: {
+  params: Promise<{
     teamId: string;
-  };
+  }>;
 };
 
-export async function GET(_request: Request, context: Params) {
-  const { teamId } = context.params;
+export async function GET(_request: Request, { params }: Params) {
+  const { teamId } = await params;
 
   if (!teamId) {
     return NextResponse.json(

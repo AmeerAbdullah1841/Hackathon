@@ -28,6 +28,7 @@ type SubmissionWithDetails = {
     category: string;
     difficulty: string;
     points: number;
+    flag: string;
   };
 };
 
