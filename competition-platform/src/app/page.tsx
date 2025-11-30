@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 
 import { ADMIN_SESSION_COOKIE } from "@/lib/admin-auth";
+import { findAdminSession } from "@/lib/store";
 import { HomeClient } from "./HomeClient";
 
 // Force dynamic rendering since we use cookies()
@@ -25,11 +26,10 @@ export default async function Page() {
     // Only check session if we have a valid token
     if (token && token.trim().length > 0) {
       try {
-        const { findAdminSession } = await import("@/lib/store");
         // Verify session exists in database
         // Use Promise.race with timeout to prevent hanging
         authenticated = await Promise.race([
-          findAdminSession(token),
+          findAdminSession(token).catch(() => false),
           new Promise<boolean>((resolve) => 
             setTimeout(() => resolve(false), 3000)
           )
