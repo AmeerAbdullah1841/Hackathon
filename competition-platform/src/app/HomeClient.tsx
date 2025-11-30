@@ -177,25 +177,39 @@ export function HomeClient({ initialAdminStatus }: HomeClientProps) {
   }, []);
 
   useEffect(() => {
-    fetchAdminSession();
-  }, [fetchAdminSession]);
+    let mounted = true;
+    fetchAdminSession().then(() => {
+      if (!mounted) return;
+    });
+    return () => {
+      mounted = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
 
   useEffect(() => {
     if (adminStatus === "authenticated") {
-      refreshDashboard().catch((error) => {
-        console.error(error);
+      let mounted = true;
+      refreshDashboard().then(() => {
+        if (!mounted) return;
+      }).catch((error) => {
+        if (mounted) console.error(error);
       });
       fetchHackathonStatus();
       // Poll hackathon status every 30 seconds to check for auto-end
       const interval = setInterval(fetchHackathonStatus, 30000);
-      return () => clearInterval(interval);
+      return () => {
+        mounted = false;
+        clearInterval(interval);
+      };
     } else if (adminStatus === "unauthenticated") {
       setTeams([]);
       setTasks([]);
       setAssignments([]);
       setHackathonStatus(null);
     }
-  }, [adminStatus, refreshDashboard, fetchHackathonStatus]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminStatus]); // Only depend on adminStatus
   const handleAdminLogin = async (event: React.FormEvent) => {
     event.preventDefault();
     setAdminError(null);

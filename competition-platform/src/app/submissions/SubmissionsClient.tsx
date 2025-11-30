@@ -75,8 +75,15 @@ export function SubmissionsClient() {
   }, []);
 
   useEffect(() => {
-    refreshSubmissions();
-  }, [refreshSubmissions]);
+    let mounted = true;
+    refreshSubmissions().then(() => {
+      if (!mounted) return;
+    });
+    return () => {
+      mounted = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
 
 
   const handleDelete = async (submissionId: string) => {

@@ -1,142 +1,199 @@
-import fs from "node:fs";
-import path from "node:path";
+import { Pool } from "pg";
 
-const DATA_DIRECTORY = path.join(process.cwd(), "data");
-const DB_FILE = path.join(DATA_DIRECTORY, "store.db");
+// Initialize database connection pool
+let pool: Pool | null = null;
+let schemaInitialized = false;
 
-// Lazy import to avoid bus errors during module load
-let Database: any = null;
-let dbPromise: Promise<any> | null = null;
-
-const getDatabase = async () => {
-  if (!Database) {
-    // Use dynamic import to truly defer loading
-    Database = (await import("better-sqlite3")).default;
-  }
-  return Database;
-};
-
-let db: any = null;
-
-const migrateSchema = (database: any) => {
-  // Add new columns to submissions table if they don't exist
-  const columns = database.pragma("table_info(submissions)");
-  const columnNames = columns.map((col: any) => col.name);
-  
-  if (!columnNames.includes("status")) {
-    database.exec("ALTER TABLE submissions ADD COLUMN status TEXT DEFAULT 'pending'");
-  }
-  if (!columnNames.includes("pointsAwarded")) {
-    database.exec("ALTER TABLE submissions ADD COLUMN pointsAwarded INTEGER DEFAULT 0");
-  }
-  if (!columnNames.includes("adminNotes")) {
-    database.exec("ALTER TABLE submissions ADD COLUMN adminNotes TEXT DEFAULT ''");
-  }
-  if (!columnNames.includes("reviewedAt")) {
-    database.exec("ALTER TABLE submissions ADD COLUMN reviewedAt TEXT");
-  }
-
-  // Initialize hackathon_status if it doesn't exist
-  const hackathonStatus = database.prepare("SELECT * FROM hackathon_status WHERE id = 1").get();
-  if (!hackathonStatus) {
-    const now = new Date().toISOString();
-    database.exec(`
-      INSERT INTO hackathon_status (id, isActive, startTime, endTime, createdAt, updatedAt)
-      VALUES (1, 0, NULL, NULL, '${now}', '${now}')
-    `);
-  }
-};
-
-const initializeSchema = (database: any) => {
-  database.pragma("journal_mode = WAL");
-  database.exec(`
-    CREATE TABLE IF NOT EXISTS teams (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      username TEXT NOT NULL UNIQUE,
-      password TEXT NOT NULL,
-      createdAt TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS tasks (
-      id TEXT PRIMARY KEY,
-      title TEXT NOT NULL,
-      category TEXT NOT NULL,
-      difficulty TEXT NOT NULL,
-      description TEXT NOT NULL,
-      flag TEXT NOT NULL,
-      points INTEGER NOT NULL,
-      resources TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS assignments (
-      id TEXT PRIMARY KEY,
-      teamId TEXT NOT NULL,
-      taskId TEXT NOT NULL,
-      status TEXT NOT NULL,
-      lastUpdated TEXT NOT NULL,
-      UNIQUE(teamId, taskId),
-      FOREIGN KEY(teamId) REFERENCES teams(id) ON DELETE CASCADE,
-      FOREIGN KEY(taskId) REFERENCES tasks(id) ON DELETE CASCADE
-    );
-
-    CREATE TABLE IF NOT EXISTS submissions (
-      id TEXT PRIMARY KEY,
-      assignmentId TEXT NOT NULL UNIQUE,
-      teamId TEXT NOT NULL,
-      plan TEXT NOT NULL,
-      findings TEXT NOT NULL,
-      flag TEXT NOT NULL,
-      createdAt TEXT NOT NULL,
-      updatedAt TEXT NOT NULL,
-      status TEXT DEFAULT 'pending',
-      pointsAwarded INTEGER DEFAULT 0,
-      adminNotes TEXT DEFAULT '',
-      reviewedAt TEXT,
-      FOREIGN KEY(teamId) REFERENCES teams(id) ON DELETE CASCADE,
-      FOREIGN KEY(assignmentId) REFERENCES assignments(id) ON DELETE CASCADE
-    );
+const getPool = (): Pool => {
+  if (!pool) {
+    const connectionString = process.env.POSTGRES_URL || process.env.DATABASE_URL;
     
-    -- Add new columns to existing submissions table if they don't exist
-    -- SQLite doesn't support ALTER TABLE ADD COLUMN IF NOT EXISTS, so we use a try-catch approach
-    -- This will be handled in the migration function
+    if (!connectionString) {
+      throw new Error(
+        `Missing PostgreSQL connection string.\n` +
+        `Please set POSTGRES_URL or DATABASE_URL in .env.local\n` +
+        `Current env check: POSTGRES_URL=${!!process.env.POSTGRES_URL}, DATABASE_URL=${!!process.env.DATABASE_URL}`
+      );
+    }
 
-    CREATE TABLE IF NOT EXISTS admin_sessions (
-      token TEXT PRIMARY KEY,
-      createdAt TEXT NOT NULL
-    );
+    pool = new Pool({
+      connectionString,
+      ssl: connectionString.includes('sslmode=require') ? { rejectUnauthorized: false } : undefined,
+      max: 5, // Fewer connections for remote database
+      min: 1, // Keep 1 connection ready
+      idleTimeoutMillis: 60000, // Keep connections longer (60 seconds)
+      connectionTimeoutMillis: 10000, // Allow more time for remote connection
+      statement_timeout: 20000, // Query timeout - 20 seconds max per query
+      keepAlive: true, // Keep connections alive
+      keepAliveInitialDelayMillis: 10000, // Start keep-alive after 10 seconds
+    });
 
-    CREATE TABLE IF NOT EXISTS hackathon_status (
-      id INTEGER PRIMARY KEY CHECK (id = 1),
-      isActive INTEGER DEFAULT 0,
-      startTime TEXT,
-      endTime TEXT,
-      createdAt TEXT NOT NULL,
-      updatedAt TEXT NOT NULL
-    );
-  `);
-};
-
-export const getDb = () => {
-  if (db) {
-    return db;
+    // Handle pool errors
+    pool.on('error', (err) => {
+      console.error('Unexpected error on idle client', err);
+    });
   }
 
-  // Synchronous initialization for compatibility
-  // This will be called lazily, so the module should already be loaded
-  if (!Database) {
-    Database = require("better-sqlite3");
+  return pool;
+};
+
+// Create a sql template tag function similar to @vercel/postgres
+export const sql = (strings: TemplateStringsArray, ...values: any[]) => {
+  const pool = getPool();
+  const query = strings.reduce((acc, str, i) => {
+    return acc + str + (i < values.length ? `$${i + 1}` : '');
+  }, '');
+  
+  return {
+    // Return a promise that executes the query
+    then: (onFulfilled: any, onRejected: any) => {
+      return pool.query(query, values)
+        .then(result => ({
+          rows: result.rows,
+          rowCount: result.rowCount,
+        }))
+        .then(onFulfilled, onRejected);
+    },
+    // Make it awaitable
+    [Symbol.toStringTag]: 'Promise',
+  } as Promise<{ rows: any[]; rowCount: number }>;
+};
+
+const initializeSchema = async () => {
+  if (schemaInitialized) {
+    return;
   }
 
   try {
-    fs.mkdirSync(DATA_DIRECTORY, { recursive: true });
-    db = new Database(DB_FILE);
-    initializeSchema(db);
-    migrateSchema(db);
-    return db;
+    const pool = getPool();
+    
+    // Create teams table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS teams (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        username TEXT NOT NULL UNIQUE,
+        password TEXT NOT NULL,
+        "createdAt" TEXT NOT NULL
+      )
+    `);
+
+    // Create tasks table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS tasks (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        category TEXT NOT NULL,
+        difficulty TEXT NOT NULL,
+        description TEXT NOT NULL,
+        flag TEXT NOT NULL,
+        points INTEGER NOT NULL,
+        resources TEXT NOT NULL
+      )
+    `);
+
+    // Create assignments table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS assignments (
+        id TEXT PRIMARY KEY,
+        "teamId" TEXT NOT NULL,
+        "taskId" TEXT NOT NULL,
+        status TEXT NOT NULL,
+        "lastUpdated" TEXT NOT NULL,
+        UNIQUE("teamId", "taskId"),
+        FOREIGN KEY("teamId") REFERENCES teams(id) ON DELETE CASCADE,
+        FOREIGN KEY("taskId") REFERENCES tasks(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Create submissions table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS submissions (
+        id TEXT PRIMARY KEY,
+        "assignmentId" TEXT NOT NULL UNIQUE,
+        "teamId" TEXT NOT NULL,
+        plan TEXT NOT NULL,
+        findings TEXT NOT NULL,
+        flag TEXT NOT NULL,
+        "createdAt" TEXT NOT NULL,
+        "updatedAt" TEXT NOT NULL,
+        status TEXT DEFAULT 'pending',
+        "pointsAwarded" INTEGER DEFAULT 0,
+        "adminNotes" TEXT DEFAULT '',
+        "reviewedAt" TEXT,
+        FOREIGN KEY("teamId") REFERENCES teams(id) ON DELETE CASCADE,
+        FOREIGN KEY("assignmentId") REFERENCES assignments(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Create admin_sessions table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS admin_sessions (
+        token TEXT PRIMARY KEY,
+        "createdAt" TEXT NOT NULL
+      )
+    `);
+
+    // Create hackathon_status table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS hackathon_status (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        "isActive" INTEGER DEFAULT 0,
+        "startTime" TEXT,
+        "endTime" TEXT,
+        "createdAt" TEXT NOT NULL,
+        "updatedAt" TEXT NOT NULL
+      )
+    `);
+
+    // Create indexes for better query performance
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_submissions_teamId ON submissions("teamId");
+      CREATE INDEX IF NOT EXISTS idx_submissions_assignmentId ON submissions("assignmentId");
+      CREATE INDEX IF NOT EXISTS idx_submissions_status ON submissions(status);
+      CREATE INDEX IF NOT EXISTS idx_assignments_teamId ON assignments("teamId");
+      CREATE INDEX IF NOT EXISTS idx_assignments_taskId ON assignments("taskId");
+    `).catch(() => {
+      // Ignore errors if indexes already exist
+    });
+
+    // Initialize hackathon_status if it doesn't exist (use INSERT ... ON CONFLICT for atomicity)
+    const now = new Date().toISOString();
+    await pool.query(
+      `INSERT INTO hackathon_status (id, "isActive", "startTime", "endTime", "createdAt", "updatedAt")
+       VALUES (1, 0, NULL, NULL, $1, $2)
+       ON CONFLICT (id) DO NOTHING`,
+      [now, now]
+    ).catch(() => {
+      // Ignore errors - table might not exist yet or already initialized
+    });
+
+    schemaInitialized = true;
+    console.log("✅ Database schema initialized successfully");
   } catch (error) {
-    console.error("Database initialization error:", error);
-    throw error;
+    console.error("Database schema initialization error:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    console.error("Error details:", { errorMessage, errorStack });
+    throw new Error(
+      `Database connection failed: ${errorMessage}\n` +
+      `Make sure:\n` +
+      `1. .env.local file exists with POSTGRES_URL\n` +
+      `2. Dev server was restarted after creating .env.local\n` +
+      `3. Connection string is correct\n` +
+      `Original error: ${errorMessage}`
+    );
   }
 };
 
+// Cache initialization to avoid repeated schema checks
+let dbInitialized = false;
+
+export const getDb = async () => {
+  if (!dbInitialized) {
+    await initializeSchema();
+    dbInitialized = true;
+  }
+  // Return sql template tag function
+  return sql;
+};

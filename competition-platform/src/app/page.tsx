@@ -12,7 +12,7 @@ export default async function Page() {
   if (token) {
     try {
       const { findAdminSession } = await import("@/lib/store");
-      authenticated = findAdminSession(token);
+      authenticated = await findAdminSession(token);
     } catch (error) {
       console.error("Error checking admin session:", error);
     }

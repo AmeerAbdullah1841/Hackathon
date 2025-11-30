@@ -44,10 +44,19 @@ export function TeamDashboard({ team, initialAssignments }: Props) {
   }, []);
 
   useEffect(() => {
-    checkHackathonStatus();
-    const interval = setInterval(checkHackathonStatus, 30000); // Check every 30 seconds
-    return () => clearInterval(interval);
-  }, [checkHackathonStatus]);
+    let mounted = true;
+    checkHackathonStatus().then(() => {
+      if (!mounted) return;
+    });
+    const interval = setInterval(() => {
+      if (mounted) checkHackathonStatus();
+    }, 30000); // Check every 30 seconds
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
 
   const progress = useMemo(() => {
     if (!assignments.length) return 0;

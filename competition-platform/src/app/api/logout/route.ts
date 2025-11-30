@@ -10,7 +10,7 @@ export async function POST() {
   
   // Delete admin session if it exists
   if (token) {
-    deleteAdminSession(token);
+    await deleteAdminSession(token);
   }
 
   const response = NextResponse.json({ success: true, message: "Logged out successfully" });

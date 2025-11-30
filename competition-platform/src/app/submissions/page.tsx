@@ -11,7 +11,7 @@ export default async function SubmissionsPage() {
   let authenticated = false;
   if (token) {
     try {
-      authenticated = findAdminSession(token);
+      authenticated = await findAdminSession(token);
     } catch (error) {
       console.error("Error checking admin session:", error);
     }

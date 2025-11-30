@@ -49,8 +49,15 @@ export function TeamsClient() {
   }, []);
 
   useEffect(() => {
-    refreshTeams();
-  }, [refreshTeams]);
+    let mounted = true;
+    refreshTeams().then(() => {
+      if (!mounted) return;
+    });
+    return () => {
+      mounted = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
 
   const handleResetPassword = async (teamId: string) => {
     if (!confirm("Are you sure you want to reset this team's password? This will generate new credentials.")) {

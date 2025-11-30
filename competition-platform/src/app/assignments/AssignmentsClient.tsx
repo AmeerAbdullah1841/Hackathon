@@ -97,8 +97,17 @@ export function AssignmentsClient() {
   }, []);
 
   useEffect(() => {
-    refreshAssignments().catch((err) => console.error(err));
-  }, [refreshAssignments]);
+    let mounted = true;
+    refreshAssignments().then(() => {
+      if (!mounted) return;
+    }).catch((err) => {
+      if (mounted) console.error(err);
+    });
+    return () => {
+      mounted = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
 
   const groupedTeams = useMemo(() => {
     const map = new Map<

@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 
-import { getDb } from "./db.server";
+import { sql, getDb } from "./db.server";
 
 export type Task = {
   id: string;
@@ -61,7 +61,7 @@ const cybersecuritySeedTasks: Task[] = [
     category: "Malware",
     difficulty: "advanced",
     description:
-      "A captured malware beacon contains three sequential payloads, each AES-encrypted with a key derived from the previous payload’s SHA1 hash. Analysts recovered the initial key: R7s!probe!2024. Decrypt the chain end-to-end and submit the final plaintext command. Flag format: flag{command_here}",
+      "A captured malware beacon contains three sequential payloads, each AES-encrypted with a key derived from the previous payload's SHA1 hash. Analysts recovered the initial key: R7s!probe!2024. Decrypt the chain end-to-end and submit the final plaintext command. Flag format: flag{command_here}",
     flag: "flag{command_here}",
     points: 270,
     resources: [],
@@ -138,7 +138,7 @@ const cybersecuritySeedTasks: Task[] = [
     category: "OSINT",
     difficulty: "advanced",
     description:
-      "A phishing URL rotates across geo-failover servers. Use DNS history, certificate transparency, and CDN misconfiguration pivots to attribute the infrastructure and identify the attacker’s hosting provider account name. Flag format: flag{account_name}",
+      "A phishing URL rotates across geo-failover servers. Use DNS history, certificate transparency, and CDN misconfiguration pivots to attribute the infrastructure and identify the attacker's hosting provider account name. Flag format: flag{account_name}",
     flag: "flag{account_name}",
     points: 230,
     resources: [],
@@ -160,118 +160,98 @@ const cybersecuritySeedTasks: Task[] = [
     category: "Cloud",
     difficulty: "advanced",
     description:
-      "A compromised AWS identity can only update IAM role tags. Exploit the misconfigured shadow role trust policy to AssumeRole via crafted tags, escalate privileges, and extract COMPROMISED_KEY from the role’s CloudWatch logs. Flag format: flag{key_here}",
+      "A compromised AWS identity can only update IAM role tags. Exploit the misconfigured shadow role trust policy to AssumeRole via crafted tags, escalate privileges, and extract COMPROMISED_KEY from the role's CloudWatch logs. Flag format: flag{key_here}",
     flag: "flag{key_here}",
     points: 260,
     resources: [],
   },
 ];
 
-// Lazy database initialization to avoid bus errors during module load
-let dbInstance: ReturnType<typeof getDb> | null = null;
+// Lazy database initialization
 let seeded = false;
-const getDbInstance = () => {
-  if (!dbInstance) {
-    dbInstance = getDb();
-    // Seed tasks on first database access
-    if (!seeded) {
-      try {
-        seedTasksIfNeeded();
-        seeded = true;
-      } catch (error) {
-        console.error("Failed to seed tasks:", error);
-        // Continue execution - tasks can be added later via API
-      }
-    }
+let seedingPromise: Promise<void> | null = null;
+
+const seedTasksIfNeeded = async () => {
+  // If already seeded, return immediately
+  if (seeded) {
+    return;
   }
-  return dbInstance;
-};
 
-const seedTasksIfNeeded = () => {
-  const db = getDbInstance();
-  const insert = db.prepare(`
-    INSERT INTO tasks (
-      id,
-      title,
-      category,
-      difficulty,
-      description,
-      flag,
-      points,
-      resources
-    ) VALUES (
-      @id,
-      @title,
-      @category,
-      @difficulty,
-      @description,
-      @flag,
-      @points,
-      @resources
-    )
-  `);
+  // If seeding is in progress, wait for it
+  if (seedingPromise) {
+    return seedingPromise;
+  }
 
-  const insertMany = db.transaction((tasks: Task[]) => {
-    for (const task of tasks) {
-      const existing = db
-        .prepare("SELECT id FROM tasks WHERE title = ? LIMIT 1")
-        .get(task.title);
-      if (existing) {
-        continue;
-      }
-      insert.run({
-        ...task,
-        resources: JSON.stringify(task.resources),
-      });
+  // Start seeding process
+  seedingPromise = (async () => {
+    const db = await getDb();
+    
+    // Check if any tasks exist - if yes, mark as seeded (faster check)
+    const existingCount = await db`
+      SELECT COUNT(*)::INTEGER as count FROM tasks LIMIT 1
+    `;
+    
+    if (existingCount.rows[0]?.count > 0) {
+      seeded = true;
+      return;
     }
-  });
 
-  insertMany(cybersecuritySeedTasks);
+    // Batch insert all tasks - use individual inserts with ON CONFLICT for simplicity
+    // This is faster than checking each one individually
+    for (const task of cybersecuritySeedTasks) {
+      await db`
+        INSERT INTO tasks (id, title, category, difficulty, description, flag, points, resources)
+        VALUES (${task.id}, ${task.title}, ${task.category}, ${task.difficulty}, ${task.description}, ${task.flag}, ${task.points}, ${JSON.stringify(task.resources)})
+        ON CONFLICT (id) DO NOTHING
+      `;
+    }
+    
+    seeded = true;
+  })();
+
+  return seedingPromise;
 };
 
-// Database and tasks are now seeded lazily on first access via getDbInstance()
+// Database and tasks are now seeded lazily on first access
 
 export const findAssignmentById = async (
   assignmentId: string,
 ): Promise<AssignmentWithTask | null> => {
-  const db = getDbInstance();
-  const row = db
-    .prepare(
-      `
-      SELECT
-        a.id as assignmentId,
-        a.teamId as assignmentTeamId,
-        a.taskId as assignmentTaskId,
-        a.status as assignmentStatus,
-        a.lastUpdated as assignmentLastUpdated,
-        t.id as taskId,
-        t.title as taskTitle,
-        t.category as taskCategory,
-        t.difficulty as taskDifficulty,
-        t.description as taskDescription,
-        t.flag as taskFlag,
-        t.points as taskPoints,
-        t.resources as taskResources,
-        s.id as submissionId,
-        s.assignmentId as submissionAssignmentId,
-        s.teamId as submissionTeamId,
-        s.plan as submissionPlan,
-        s.findings as submissionFindings,
-        s.flag as submissionFlag,
-        s.createdAt as submissionCreatedAt,
-        s.updatedAt as submissionUpdatedAt,
-        s.status as submissionStatus,
-        s.pointsAwarded as submissionPointsAwarded,
-        s.adminNotes as submissionAdminNotes,
-        s.reviewedAt as submissionReviewedAt
-      FROM assignments a
-      LEFT JOIN tasks t ON t.id = a.taskId
-      LEFT JOIN submissions s ON s.assignmentId = a.id
-      WHERE a.id = ?
-    `,
-    )
-    .get(assignmentId);
+  const db = await getDb();
+  const result = await db`
+    SELECT
+      a.id as "assignmentId",
+      a."teamId" as "assignmentTeamId",
+      a."taskId" as "assignmentTaskId",
+      a.status as "assignmentStatus",
+      a."lastUpdated" as "assignmentLastUpdated",
+      t.id as "taskId",
+      t.title as "taskTitle",
+      t.category as "taskCategory",
+      t.difficulty as "taskDifficulty",
+      t.description as "taskDescription",
+      t.flag as "taskFlag",
+      t.points as "taskPoints",
+      t.resources as "taskResources",
+      s.id as "submissionId",
+      s."assignmentId" as "submissionAssignmentId",
+      s."teamId" as "submissionTeamId",
+      s.plan as "submissionPlan",
+      s.findings as "submissionFindings",
+      s.flag as "submissionFlag",
+      s."createdAt" as "submissionCreatedAt",
+      s."updatedAt" as "submissionUpdatedAt",
+      s.status as "submissionStatus",
+      s."pointsAwarded" as "submissionPointsAwarded",
+      s."adminNotes" as "submissionAdminNotes",
+      s."reviewedAt" as "submissionReviewedAt"
+    FROM assignments a
+    LEFT JOIN tasks t ON t.id = a."taskId"
+    LEFT JOIN submissions s ON s."assignmentId" = a.id
+    WHERE a.id = ${assignmentId}
+  `;
 
+  const row = result.rows[0];
   if (!row) {
     return null;
   }
@@ -398,19 +378,22 @@ export const createTeam = async (name: string) => {
     createdAt: new Date().toISOString(),
   };
 
-  getDbInstance().prepare(
-    `
-    INSERT INTO teams (id, name, username, password, createdAt)
-    VALUES (@id, @name, @username, @password, @createdAt)
-  `,
-  ).run(team);
+  const db = await getDb();
+  await db`
+    INSERT INTO teams (id, name, username, password, "createdAt")
+    VALUES (${team.id}, ${team.name}, ${team.username}, ${team.password}, ${team.createdAt})
+  `;
 
   return team;
 };
 
 export const resetTeamPassword = async (teamId: string): Promise<Team> => {
-  const db = getDbInstance();
-  const team = db.prepare("SELECT * FROM teams WHERE id = ?").get(teamId) as Team | undefined;
+  const db = await getDb();
+  const result = await db`
+    SELECT * FROM teams WHERE id = ${teamId}
+  `;
+  
+  const team = result.rows[0] as Team | undefined;
 
   if (!team) {
     throw new Error("Team not found");
@@ -419,13 +402,11 @@ export const resetTeamPassword = async (teamId: string): Promise<Team> => {
   // Only generate a new password, keep the username
   const password = crypto.randomBytes(4).toString("hex");
 
-  db.prepare(
-    `
+  await db`
     UPDATE teams
-    SET password = ?
-    WHERE id = ?
-  `,
-  ).run(password, teamId);
+    SET password = ${password}
+    WHERE id = ${teamId}
+  `;
 
   return {
     ...team,
@@ -434,16 +415,21 @@ export const resetTeamPassword = async (teamId: string): Promise<Team> => {
 };
 
 export const deleteTeamSubmissions = async (teamId: string): Promise<void> => {
-  const db = getDbInstance();
+  const db = await getDb();
   
   // Check if team exists
-  const team = db.prepare("SELECT id FROM teams WHERE id = ?").get(teamId);
-  if (!team) {
+  const teamResult = await db`
+    SELECT id FROM teams WHERE id = ${teamId}
+  `;
+  
+  if (teamResult.rows.length === 0) {
     throw new Error("Team not found");
   }
 
   // Delete all submissions for this team
-  db.prepare("DELETE FROM submissions WHERE teamId = ?").run(teamId);
+  await db`
+    DELETE FROM submissions WHERE "teamId" = ${teamId}
+  `;
 };
 
 export type HackathonStatus = {
@@ -454,18 +440,20 @@ export type HackathonStatus = {
 };
 
 export const getHackathonStatus = async (): Promise<HackathonStatus> => {
-  const db = getDbInstance();
-  const status = db.prepare("SELECT * FROM hackathon_status WHERE id = 1").get() as any;
+  const db = await getDb();
+  const result = await db`
+    SELECT * FROM hackathon_status WHERE id = 1
+  `;
+  
+  const status = result.rows[0] as any;
   
   if (!status) {
     // Initialize if not exists
     const now = new Date().toISOString();
-    db.prepare(
-      `
-      INSERT INTO hackathon_status (id, isActive, startTime, endTime, createdAt, updatedAt)
-      VALUES (1, 0, NULL, NULL, ?, ?)
-    `,
-    ).run(now, now);
+    await db`
+      INSERT INTO hackathon_status (id, "isActive", "startTime", "endTime", "createdAt", "updatedAt")
+      VALUES (1, 0, NULL, NULL, ${now}, ${now})
+    `;
     
     return {
       isActive: false,
@@ -482,13 +470,11 @@ export const getHackathonStatus = async (): Promise<HackathonStatus> => {
     if (now >= endTime) {
       // Auto-end hackathon
       const updatedAt = new Date().toISOString();
-      db.prepare(
-        `
+      await db`
         UPDATE hackathon_status
-        SET isActive = 0, updatedAt = ?
+        SET "isActive" = 0, "updatedAt" = ${updatedAt}
         WHERE id = 1
-      `,
-      ).run(updatedAt);
+      `;
       
       return {
         isActive: false,
@@ -508,20 +494,18 @@ export const getHackathonStatus = async (): Promise<HackathonStatus> => {
 };
 
 export const startHackathon = async (): Promise<HackathonStatus> => {
-  const db = getDbInstance();
+  const db = await getDb();
   const now = new Date();
   const startTime = now.toISOString();
   // Set end time to 24 hours from now
   const endTime = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
   const updatedAt = now.toISOString();
 
-  db.prepare(
-    `
+  await db`
     UPDATE hackathon_status
-    SET isActive = 1, startTime = ?, endTime = ?, updatedAt = ?
+    SET "isActive" = 1, "startTime" = ${startTime}, "endTime" = ${endTime}, "updatedAt" = ${updatedAt}
     WHERE id = 1
-  `,
-  ).run(startTime, endTime, updatedAt);
+  `;
 
   return {
     isActive: true,
@@ -532,18 +516,19 @@ export const startHackathon = async (): Promise<HackathonStatus> => {
 };
 
 export const stopHackathon = async (): Promise<HackathonStatus> => {
-  const db = getDbInstance();
+  const db = await getDb();
   const updatedAt = new Date().toISOString();
 
-  db.prepare(
-    `
+  await db`
     UPDATE hackathon_status
-    SET isActive = 0, updatedAt = ?
+    SET "isActive" = 0, "updatedAt" = ${updatedAt}
     WHERE id = 1
-  `,
-  ).run(updatedAt);
+  `;
 
-  const status = db.prepare("SELECT * FROM hackathon_status WHERE id = 1").get() as any;
+  const statusResult = await db`
+    SELECT * FROM hackathon_status WHERE id = 1
+  `;
+  const status = statusResult.rows[0] as any;
 
   return {
     isActive: false,
@@ -558,16 +543,14 @@ export const setHackathonTimer = async (
   endTime: string,
   isActive: boolean,
 ): Promise<HackathonStatus> => {
-  const db = getDbInstance();
+  const db = await getDb();
   const updatedAt = new Date().toISOString();
 
-  db.prepare(
-    `
+  await db`
     UPDATE hackathon_status
-    SET startTime = ?, endTime = ?, isActive = ?, updatedAt = ?
+    SET "startTime" = ${startTime}, "endTime" = ${endTime}, "isActive" = ${isActive ? 1 : 0}, "updatedAt" = ${updatedAt}
     WHERE id = 1
-  `,
-  ).run(startTime, endTime, isActive ? 1 : 0, updatedAt);
+  `;
 
   return {
     isActive,
@@ -580,48 +563,43 @@ export const setHackathonTimer = async (
 export const createTask = async (task: Omit<Task, "id">) => {
   const newTask: Task = { ...task, id: crypto.randomUUID() };
 
-  getDbInstance().prepare(
-    `
+  const db = await getDb();
+  await db`
     INSERT INTO tasks (
-      id,
-      title,
-      category,
-      difficulty,
-      description,
-      flag,
-      points,
-      resources
+      id, title, category, difficulty, description, flag, points, resources
     ) VALUES (
-      @id,
-      @title,
-      @category,
-      @difficulty,
-      @description,
-      @flag,
-      @points,
-      @resources
+      ${newTask.id},
+      ${newTask.title},
+      ${newTask.category},
+      ${newTask.difficulty},
+      ${newTask.description},
+      ${newTask.flag},
+      ${newTask.points},
+      ${JSON.stringify(newTask.resources)}
     )
-  `,
-  ).run({
-    ...newTask,
-    resources: JSON.stringify(newTask.resources),
-  });
+  `;
 
   return newTask;
 };
 
 export const assignTask = async (teamId: string, taskId: string) => {
-  const db = getDbInstance();
-  const teamExists = db.prepare("SELECT id FROM teams WHERE id = ?").get(teamId);
-  const taskExists = db.prepare("SELECT id FROM tasks WHERE id = ?").get(taskId);
+  const db = await getDb();
+  const teamResult = await db`
+    SELECT id FROM teams WHERE id = ${teamId}
+  `;
+  const taskResult = await db`
+    SELECT id FROM tasks WHERE id = ${taskId}
+  `;
 
-  if (!teamExists || !taskExists) {
+  if (teamResult.rows.length === 0 || taskResult.rows.length === 0) {
     throw new Error("Invalid team or task identifier");
   }
 
-  const alreadyAssigned = getDbInstance()
-    .prepare("SELECT * FROM assignments WHERE teamId = ? AND taskId = ?")
-    .get(teamId, taskId) as Assignment | undefined;
+  const alreadyAssignedResult = await db`
+    SELECT * FROM assignments WHERE "teamId" = ${teamId} AND "taskId" = ${taskId}
+  `;
+  
+  const alreadyAssigned = alreadyAssignedResult.rows[0] as Assignment | undefined;
 
   if (alreadyAssigned) {
     return alreadyAssigned;
@@ -635,33 +613,52 @@ export const assignTask = async (teamId: string, taskId: string) => {
     lastUpdated: new Date().toISOString(),
   };
 
-  getDbInstance().prepare(
-    `
-    INSERT INTO assignments (id, teamId, taskId, status, lastUpdated)
-    VALUES (@id, @teamId, @taskId, @status, @lastUpdated)
-  `,
-  ).run(assignment);
+  await db`
+    INSERT INTO assignments (id, "teamId", "taskId", status, "lastUpdated")
+    VALUES (${assignment.id}, ${assignment.teamId}, ${assignment.taskId}, ${assignment.status}, ${assignment.lastUpdated})
+  `;
 
   return assignment;
 };
 
-export const listTeams = async (): Promise<Team[]> =>
-  (getDbInstance()
-    .prepare("SELECT * FROM teams ORDER BY datetime(createdAt) DESC")
-    .all() as Team[]);
+export const listTeams = async (): Promise<Team[]> => {
+  const db = await getDb();
+  const result = await db`
+    SELECT * FROM teams ORDER BY "createdAt" DESC
+  `;
+  
+  return result.rows.map(mapTeamRow);
+};
 
-export const listTasks = async (): Promise<Task[]> =>
-  (getDbInstance()
-    .prepare("SELECT * FROM tasks ORDER BY points ASC")
-    .all() as Task[]).map(mapTaskRow);
+export const listTasks = async (): Promise<Task[]> => {
+  // Only seed when listing tasks (tasks are the seed data)
+  await seedTasksIfNeeded();
+  
+  const db = await getDb();
+  const result = await db`
+    SELECT * FROM tasks ORDER BY points ASC
+  `;
+  
+  return result.rows.map(mapTaskRow);
+};
 
-export const listAssignments = async (): Promise<Assignment[]> =>
-  getDbInstance().prepare("SELECT * FROM assignments").all() as Assignment[];
+export const listAssignments = async (): Promise<Assignment[]> => {
+  const db = await getDb();
+  const result = await db`
+    SELECT * FROM assignments
+  `;
+  
+  return result.rows as Assignment[];
+};
 
-export const listSubmissions = async (): Promise<Submission[]> =>
-  (getDbInstance().prepare("SELECT * FROM submissions").all() as Submission[]).map(
-    mapSubmissionRow,
-  );
+export const listSubmissions = async (): Promise<Submission[]> => {
+  const db = await getDb();
+  const result = await db`
+    SELECT * FROM submissions
+  `;
+  
+  return result.rows.map(mapSubmissionRow);
+};
 
 export type SubmissionWithDetails = Submission & {
   team?: Team;
@@ -670,48 +667,46 @@ export type SubmissionWithDetails = Submission & {
 };
 
 export const listSubmissionsWithDetails = async (): Promise<SubmissionWithDetails[]> => {
-  const db = getDbInstance();
-  const rows = db
-    .prepare(
-      `
-      SELECT
-        s.id as submissionId,
-        s.assignmentId as submissionAssignmentId,
-        s.teamId as submissionTeamId,
-        s.plan as submissionPlan,
-        s.findings as submissionFindings,
-        s.flag as submissionFlag,
-        s.createdAt as submissionCreatedAt,
-        s.updatedAt as submissionUpdatedAt,
-        s.status as submissionStatus,
-        s.pointsAwarded as submissionPointsAwarded,
-        s.adminNotes as submissionAdminNotes,
-        s.reviewedAt as submissionReviewedAt,
-        t.id as teamId,
-        t.name as teamName,
-        t.username as teamUsername,
-        t.createdAt as teamCreatedAt,
-        task.id as taskId,
-        task.title as taskTitle,
-        task.category as taskCategory,
-        task.difficulty as taskDifficulty,
-        task.description as taskDescription,
-        task.flag as taskFlag,
-        task.points as taskPoints,
-        task.resources as taskResources,
-        a.id as assignmentId,
-        a.status as assignmentStatus,
-        a.lastUpdated as assignmentLastUpdated
-      FROM submissions s
-      LEFT JOIN teams t ON t.id = s.teamId
-      LEFT JOIN assignments a ON a.id = s.assignmentId
-      LEFT JOIN tasks task ON task.id = a.taskId
-      ORDER BY s.createdAt DESC
-    `,
-    )
-    .all();
+  const db = await getDb();
+  // Optimized query with explicit column selection and proper indexing
+  const result = await db`
+    SELECT
+      s.id as "submissionId",
+      s."assignmentId" as "submissionAssignmentId",
+      s."teamId" as "submissionTeamId",
+      s.plan as "submissionPlan",
+      s.findings as "submissionFindings",
+      s.flag as "submissionFlag",
+      s."createdAt" as "submissionCreatedAt",
+      s."updatedAt" as "submissionUpdatedAt",
+      s.status as "submissionStatus",
+      s."pointsAwarded" as "submissionPointsAwarded",
+      s."adminNotes" as "submissionAdminNotes",
+      s."reviewedAt" as "submissionReviewedAt",
+      t.id as "teamId",
+      t.name as "teamName",
+      t.username as "teamUsername",
+      t."createdAt" as "teamCreatedAt",
+      task.id as "taskId",
+      task.title as "taskTitle",
+      task.category as "taskCategory",
+      task.difficulty as "taskDifficulty",
+      task.description as "taskDescription",
+      task.flag as "taskFlag",
+      task.points as "taskPoints",
+      task.resources as "taskResources",
+      a.id as "assignmentId",
+      a.status as "assignmentStatus",
+      a."lastUpdated" as "assignmentLastUpdated"
+    FROM submissions s
+    LEFT JOIN teams t ON t.id = s."teamId"
+    LEFT JOIN assignments a ON a.id = s."assignmentId"
+    LEFT JOIN tasks task ON task.id = a."taskId"
+    ORDER BY s."createdAt" DESC
+    LIMIT 1000
+  `;
 
-  return rows.map((row: any) => ({
+  return result.rows.map((row: any) => ({
     ...mapSubmissionRow({
       id: row.submissionId,
       assignmentId: row.submissionAssignmentId,
@@ -765,10 +760,12 @@ export const reviewSubmission = async (
   pointsAwarded: number,
   adminNotes: string,
 ): Promise<Submission> => {
-  const db = getDbInstance();
-  const submission = db
-    .prepare("SELECT * FROM submissions WHERE id = ?")
-    .get(submissionId) as any;
+  const db = await getDb();
+  const submissionResult = await db`
+    SELECT * FROM submissions WHERE id = ${submissionId}
+  `;
+  
+  const submission = submissionResult.rows[0] as any;
 
   if (!submission) {
     throw new Error("Submission not found");
@@ -776,16 +773,14 @@ export const reviewSubmission = async (
 
   const reviewedAt = new Date().toISOString();
 
-  db.prepare(
-    `
+  await db`
     UPDATE submissions
-    SET status = ?,
-        pointsAwarded = ?,
-        adminNotes = ?,
-        reviewedAt = ?
-    WHERE id = ?
-  `,
-  ).run(status, pointsAwarded, adminNotes, reviewedAt, submissionId);
+    SET status = ${status},
+        "pointsAwarded" = ${pointsAwarded},
+        "adminNotes" = ${adminNotes},
+        "reviewedAt" = ${reviewedAt}
+    WHERE id = ${submissionId}
+  `;
 
   return mapSubmissionRow({
     ...submission,
@@ -799,46 +794,42 @@ export const reviewSubmission = async (
 export const listAssignmentsForTeam = async (
   teamId: string,
 ): Promise<AssignmentWithTask[]> => {
-  const db = getDbInstance();
-  const rows = db
-    .prepare(
-      `
-      SELECT
-        a.id as assignmentId,
-        a.teamId as assignmentTeamId,
-        a.taskId as assignmentTaskId,
-        a.status as assignmentStatus,
-        a.lastUpdated as assignmentLastUpdated,
-        t.id as taskId,
-        t.title as taskTitle,
-        t.category as taskCategory,
-        t.difficulty as taskDifficulty,
-        t.description as taskDescription,
-        t.flag as taskFlag,
-        t.points as taskPoints,
-        t.resources as taskResources,
-        s.id as submissionId,
-        s.assignmentId as submissionAssignmentId,
-        s.teamId as submissionTeamId,
-        s.plan as submissionPlan,
-        s.findings as submissionFindings,
-        s.flag as submissionFlag,
-        s.createdAt as submissionCreatedAt,
-        s.updatedAt as submissionUpdatedAt,
-        s.status as submissionStatus,
-        s.pointsAwarded as submissionPointsAwarded,
-        s.adminNotes as submissionAdminNotes,
-        s.reviewedAt as submissionReviewedAt
-      FROM assignments a
-      LEFT JOIN tasks t ON t.id = a.taskId
-      LEFT JOIN submissions s ON s.assignmentId = a.id
-      WHERE a.teamId = ?
-      ORDER BY datetime(a.lastUpdated) DESC
-    `,
-    )
-    .all(teamId);
+  const db = await getDb();
+  const result = await db`
+    SELECT
+      a.id as "assignmentId",
+      a."teamId" as "assignmentTeamId",
+      a."taskId" as "assignmentTaskId",
+      a.status as "assignmentStatus",
+      a."lastUpdated" as "assignmentLastUpdated",
+      t.id as "taskId",
+      t.title as "taskTitle",
+      t.category as "taskCategory",
+      t.difficulty as "taskDifficulty",
+      t.description as "taskDescription",
+      t.flag as "taskFlag",
+      t.points as "taskPoints",
+      t.resources as "taskResources",
+      s.id as "submissionId",
+      s."assignmentId" as "submissionAssignmentId",
+      s."teamId" as "submissionTeamId",
+      s.plan as "submissionPlan",
+      s.findings as "submissionFindings",
+      s.flag as "submissionFlag",
+      s."createdAt" as "submissionCreatedAt",
+      s."updatedAt" as "submissionUpdatedAt",
+      s.status as "submissionStatus",
+      s."pointsAwarded" as "submissionPointsAwarded",
+      s."adminNotes" as "submissionAdminNotes",
+      s."reviewedAt" as "submissionReviewedAt"
+    FROM assignments a
+    LEFT JOIN tasks t ON t.id = a."taskId"
+    LEFT JOIN submissions s ON s."assignmentId" = a.id
+    WHERE a."teamId" = ${teamId}
+    ORDER BY a."lastUpdated" DESC
+  `;
 
-  return rows.map((row) => ({
+  return result.rows.map((row) => ({
     id: row.assignmentId,
     teamId: row.assignmentTeamId,
     taskId: row.assignmentTaskId,
@@ -861,7 +852,12 @@ export const listAssignmentsForTeam = async (
 };
 
 export const findTeamById = async (teamId: string): Promise<Team | null> => {
-  const team = getDbInstance().prepare("SELECT * FROM teams WHERE id = ?").get(teamId) as Team | undefined;
+  const db = await getDb();
+  const result = await db`
+    SELECT * FROM teams WHERE id = ${teamId}
+  `;
+  
+  const team = result.rows[0] as Team | undefined;
   return team ?? null;
 };
 
@@ -874,88 +870,71 @@ export type LeaderboardEntry = {
 };
 
 export const getLeaderboard = async (): Promise<LeaderboardEntry[]> => {
-  const db = getDbInstance();
+  const db = await getDb();
   
-  // Get all teams
-  const teams = db.prepare("SELECT * FROM teams").all() as any[];
-  
-  // Get total number of tasks
-  const totalTasks = (db.prepare("SELECT COUNT(*) as count FROM tasks").get() as any)?.count ?? 0;
-
-  // Get team scores (sum of points from approved submissions)
-  const teamScores = db
-    .prepare(
-      `
+  // Optimized: Single query with JOIN and subquery for total tasks
+  const result = await db`
+    WITH team_scores AS (
       SELECT 
-        teamId,
-        SUM(pointsAwarded) as totalScore,
-        COUNT(DISTINCT assignmentId) as completedCount
-      FROM submissions
-      WHERE status = 'approved'
-      GROUP BY teamId
-    `,
+        s."teamId",
+        COALESCE(SUM(s."pointsAwarded"), 0) as "totalScore",
+        COUNT(DISTINCT s."assignmentId") as "completedCount"
+      FROM submissions s
+      WHERE s.status = 'approved'
+      GROUP BY s."teamId"
+    ),
+    total_tasks AS (
+      SELECT COUNT(*)::INTEGER as count FROM tasks
     )
-    .all() as Array<{
-    teamId: string;
-    totalScore: number;
-    completedCount: number;
-  }>;
-
-  // Create a map for quick lookup
-  const scoreMap = new Map<string, { score: number; completed: number }>();
-  teamScores.forEach((stat) => {
-    scoreMap.set(stat.teamId, {
-      score: stat.totalScore || 0,
-      completed: stat.completedCount || 0,
-    });
-  });
-
-  // Convert to leaderboard entries
-  const entries: LeaderboardEntry[] = teams
-    .map((team) => {
-      const stats = scoreMap.get(team.id) ?? { score: 0, completed: 0 };
-      return {
-        team: mapTeamRow(team),
-        score: stats.score,
-        challengesCompleted: stats.completed,
-        totalChallenges: totalTasks,
-      };
-    })
-    .sort((a, b) => {
-      // Sort by score descending, then by team name ascending
-      if (b.score !== a.score) {
-        return b.score - a.score;
-      }
-      return a.team.name.localeCompare(b.team.name);
-    })
-    .map((entry, index) => ({
-      ...entry,
-      rank: index + 1,
-    }));
-
-  return entries;
+    SELECT 
+      t.id,
+      t.name,
+      t.username,
+      t.password,
+      t."createdAt",
+      COALESCE(ts."totalScore", 0)::INTEGER as score,
+      COALESCE(ts."completedCount", 0)::INTEGER as "challengesCompleted",
+      (SELECT count FROM total_tasks) as "totalChallenges"
+    FROM teams t
+    LEFT JOIN team_scores ts ON ts."teamId" = t.id
+    CROSS JOIN total_tasks
+    ORDER BY score DESC, t.name ASC
+  `;
+  
+  return result.rows.map((row: any, index: number) => ({
+    rank: index + 1,
+    team: mapTeamRow({
+      id: row.id,
+      name: row.name,
+      username: row.username,
+      password: row.password,
+      createdAt: row.createdAt,
+    }),
+    score: Number(row.score) || 0,
+    challengesCompleted: Number(row.challengesCompleted) || 0,
+    totalChallenges: Number(row.totalChallenges) || 0,
+  }));
 };
 
 export const findSubmissionByAssignmentId = async (
   assignmentId: string,
 ): Promise<Submission | null> => {
-  const db = getDbInstance();
-  const submission =
-    db
-      .prepare("SELECT * FROM submissions WHERE assignmentId = ? LIMIT 1")
-      .get(assignmentId) ?? null;
-
+  const db = await getDb();
+  const result = await db`
+    SELECT * FROM submissions WHERE "assignmentId" = ${assignmentId} LIMIT 1
+  `;
+  
+  const submission = result.rows[0];
   return submission ? mapSubmissionRow(submission) : null;
 };
 
 export const validateTeamLogin = async (username: string, password: string) => {
-  const db = getDbInstance();
-  const team =
-    db
-      .prepare(
-        "SELECT * FROM teams WHERE username = ? AND password = ? LIMIT 1",
-      )
-      .get(username, password) ?? null;
+  const db = await getDb();
+  const result = await db`
+    SELECT * FROM teams WHERE username = ${username} AND password = ${password} LIMIT 1
+  `;
+  
+  const team = result.rows[0] as Team | undefined;
 
   if (!team) {
     return null;
@@ -971,11 +950,12 @@ export const upsertAssignmentStatus = async (
   assignmentId: string,
   status: Assignment["status"],
 ) => {
-  const db = getDbInstance();
-  const assignment =
-    db
-      .prepare("SELECT * FROM assignments WHERE id = ?")
-      .get(assignmentId) ?? null;
+  const db = await getDb();
+  const assignmentResult = await db`
+    SELECT * FROM assignments WHERE id = ${assignmentId}
+  `;
+  
+  const assignment = assignmentResult.rows[0] as Assignment | undefined;
 
   if (!assignment) {
     throw new Error("Assignment not found");
@@ -983,13 +963,11 @@ export const upsertAssignmentStatus = async (
 
   const lastUpdated = new Date().toISOString();
 
-  getDbInstance().prepare(
-    `
+  await db`
     UPDATE assignments
-    SET status = ?, lastUpdated = ?
-    WHERE id = ?
-  `,
-  ).run(status, lastUpdated, assignmentId);
+    SET status = ${status}, "lastUpdated" = ${lastUpdated}
+    WHERE id = ${assignmentId}
+  `;
 
   return {
     ...assignment,
@@ -1013,9 +991,12 @@ export const upsertSubmission = async ({
   findings,
   flag,
 }: SubmissionInput): Promise<Submission> => {
-  const assignment =
-    getDbInstance().prepare("SELECT * FROM assignments WHERE id = ?").get(assignmentId) ??
-    null;
+  const db = await getDb();
+  const assignmentResult = await db`
+    SELECT * FROM assignments WHERE id = ${assignmentId}
+  `;
+  
+  const assignment = assignmentResult.rows[0] as Assignment | undefined;
 
   if (!assignment) {
     throw new Error("Assignment not found");
@@ -1025,32 +1006,24 @@ export const upsertSubmission = async ({
     throw new Error("Assignment does not belong to this team");
   }
 
-  const db = getDbInstance();
-  const existing =
-    db
-      .prepare("SELECT * FROM submissions WHERE assignmentId = ?")
-      .get(assignmentId) ?? null;
+  const existingResult = await db`
+    SELECT * FROM submissions WHERE "assignmentId" = ${assignmentId}
+  `;
+  
+  const existing = existingResult.rows[0] as any;
 
   const createdAt = existing?.createdAt ?? new Date().toISOString();
   const updatedAt = new Date().toISOString();
 
   if (existing) {
-    getDbInstance().prepare(
-      `
+    await db`
       UPDATE submissions
-      SET plan = @plan,
-          findings = @findings,
-          flag = @flag,
-          updatedAt = @updatedAt
-      WHERE assignmentId = @assignmentId
-    `,
-    ).run({
-      assignmentId,
-      plan,
-      findings,
-      flag,
-      updatedAt,
-    });
+      SET plan = ${plan},
+          findings = ${findings},
+          flag = ${flag},
+          "updatedAt" = ${updatedAt}
+      WHERE "assignmentId" = ${assignmentId}
+    `;
 
     return {
       id: existing.id,
@@ -1083,72 +1056,63 @@ export const upsertSubmission = async ({
     reviewedAt: null,
   };
 
-  getDbInstance().prepare(
-    `
+  await db`
     INSERT INTO submissions (
-      id,
-      assignmentId,
-      teamId,
-      plan,
-      findings,
-      flag,
-      createdAt,
-      updatedAt,
-      status,
-      pointsAwarded,
-      adminNotes
+      id, "assignmentId", "teamId", plan, findings, flag,
+      "createdAt", "updatedAt", status, "pointsAwarded", "adminNotes"
     ) VALUES (
-      @id,
-      @assignmentId,
-      @teamId,
-      @plan,
-      @findings,
-      @flag,
-      @createdAt,
-      @updatedAt,
+      ${submission.id},
+      ${submission.assignmentId},
+      ${submission.teamId},
+      ${submission.plan},
+      ${submission.findings},
+      ${submission.flag},
+      ${submission.createdAt},
+      ${submission.updatedAt},
       'pending',
       0,
       ''
     )
-  `,
-  ).run(submission);
+  `;
 
   return submission;
 };
 
-export const createAdminSession = (): AdminSession => {
+export const createAdminSession = async (): Promise<AdminSession> => {
   const session: AdminSession = {
     token: crypto.randomUUID(),
     createdAt: new Date().toISOString(),
   };
 
-  getDbInstance().prepare(
-    `
-    INSERT INTO admin_sessions (token, createdAt)
-    VALUES (@token, @createdAt)
-  `,
-  ).run(session);
+  const db = await getDb();
+  await db`
+    INSERT INTO admin_sessions (token, "createdAt")
+    VALUES (${session.token}, ${session.createdAt})
+  `;
 
   return session;
 };
 
-export const findAdminSession = (token: string): boolean => {
+export const findAdminSession = async (token: string): Promise<boolean> => {
   if (!token) {
     return false;
   }
 
-  const row =
-    getDbInstance()
-      .prepare("SELECT token FROM admin_sessions WHERE token = ? LIMIT 1")
-      .get(token) ?? null;
+  const db = await getDb();
+  const result = await db`
+    SELECT token FROM admin_sessions WHERE token = ${token} LIMIT 1
+  `;
 
-  return Boolean(row);
+  return result.rows.length > 0;
 };
 
-export const deleteAdminSession = (token: string) => {
+export const deleteAdminSession = async (token: string) => {
   if (!token) {
     return;
   }
 
-  getDbInstance().prepare("DELETE FROM admin_sessions WHERE token = ?").run(token);
+  const db = await getDb();
+  await db`
+    DELETE FROM admin_sessions WHERE token = ${token}
+  `;
 };

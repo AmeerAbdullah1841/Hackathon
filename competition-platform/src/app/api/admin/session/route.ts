@@ -8,7 +8,7 @@ export async function GET() {
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get(ADMIN_SESSION_COOKIE)?.value ?? "";
-    const authenticated = findAdminSession(token);
+    const authenticated = await findAdminSession(token);
     return NextResponse.json({ authenticated });
   } catch (error) {
     console.error("Session check error:", error);
@@ -20,7 +20,7 @@ export async function DELETE() {
   const cookieStore = await cookies();
   const token = cookieStore.get(ADMIN_SESSION_COOKIE)?.value ?? "";
   if (token) {
-    deleteAdminSession(token);
+    await deleteAdminSession(token);
   }
 
   const response = NextResponse.json({ authenticated: false });
