@@ -705,7 +705,7 @@ export function HomeClient({ initialAdminStatus }: HomeClientProps) {
                     Admin Dashboard
                   </h1>
                   <p className="mt-4 max-w-3xl text-slate-300">
-                    Spin up teams, issue technical challenges, and keep assignments organized in one Next.js full-stack workspace.
+                    Spin up teams, keep assignments organized, Point Top performing teams in one Admin workspace.
                   </p>
                 </div>
                 <div className="flex gap-3">
