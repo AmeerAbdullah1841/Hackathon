@@ -108,6 +108,28 @@ export function TeamsClient() {
     }
   };
 
+  const handleDeleteTeam = async (teamId: string, teamName: string) => {
+    if (!confirm(`Are you sure you want to delete "${teamName}"? This will permanently delete the team, all their assignments, and all their submissions. This action cannot be undone.`)) {
+      return;
+    }
+
+    setActionLoading(`delete-${teamId}`);
+    try {
+      await request(`/api/teams/${teamId}`, {
+        method: "DELETE",
+      });
+      
+      setError(null);
+      // Remove the team from the list
+      setTeams((current) => current.filter((team) => team.id !== teamId));
+    } catch (err) {
+      console.error(err);
+      setError(err instanceof Error ? err.message : "Failed to delete team");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const handleAdminLogout = async () => {
     try {
       await request("/api/logout", {
@@ -209,7 +231,7 @@ export function TeamsClient() {
                             <button
                               type="button"
                               onClick={() => handleResetPassword(team.id)}
-                              disabled={actionLoading === `password-${team.id}`}
+                              disabled={actionLoading === `password-${team.id}` || actionLoading === `delete-${team.id}`}
                               className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               {actionLoading === `password-${team.id}` ? "Resetting..." : "Reset Password"}
@@ -217,10 +239,18 @@ export function TeamsClient() {
                             <button
                               type="button"
                               onClick={() => handleResetSubmissions(team.id)}
-                              disabled={actionLoading === `submissions-${team.id}`}
+                              disabled={actionLoading === `submissions-${team.id}` || actionLoading === `delete-${team.id}`}
                               className="rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 transition hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               {actionLoading === `submissions-${team.id}` ? "Deleting..." : "Reset Submissions"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteTeam(team.id, team.name)}
+                              disabled={actionLoading !== null && actionLoading !== `delete-${team.id}`}
+                              className="rounded-lg border border-red-500 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {actionLoading === `delete-${team.id}` ? "Deleting..." : "Delete Team"}
                             </button>
                           </div>
                         </td>

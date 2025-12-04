@@ -432,6 +432,24 @@ export const deleteTeamSubmissions = async (teamId: string): Promise<void> => {
   `;
 };
 
+export const deleteTeam = async (teamId: string): Promise<void> => {
+  const db = await getDb();
+  
+  // Check if team exists
+  const teamResult = await db`
+    SELECT id FROM teams WHERE id = ${teamId}
+  `;
+  
+  if (teamResult.rows.length === 0) {
+    throw new Error("Team not found");
+  }
+
+  // Delete the team (cascade deletes will handle assignments and submissions)
+  await db`
+    DELETE FROM teams WHERE id = ${teamId}
+  `;
+};
+
 export type HackathonStatus = {
   isActive: boolean;
   startTime: string | null;
@@ -493,6 +511,36 @@ export const getHackathonStatus = async (): Promise<HackathonStatus> => {
   };
 };
 
+export const getSelectedHackathonTasks = async (): Promise<string[]> => {
+  const db = await getDb();
+  const result = await db`
+    SELECT "taskId" FROM hackathon_tasks
+  `;
+  
+  return result.rows.map((row: any) => row.taskId);
+};
+
+export const setSelectedHackathonTasks = async (taskIds: string[]): Promise<void> => {
+  const db = await getDb();
+  
+  // Clear existing selections
+  await db`
+    DELETE FROM hackathon_tasks
+  `;
+  
+  // Insert new selections
+  if (taskIds.length > 0) {
+    const now = new Date().toISOString();
+    for (const taskId of taskIds) {
+      await db`
+        INSERT INTO hackathon_tasks ("taskId", "createdAt")
+        VALUES (${taskId}, ${now})
+        ON CONFLICT ("taskId") DO NOTHING
+      `;
+    }
+  }
+};
+
 export const startHackathon = async (): Promise<HackathonStatus> => {
   const db = await getDb();
   const now = new Date();
@@ -500,6 +548,26 @@ export const startHackathon = async (): Promise<HackathonStatus> => {
   // Set end time to 24 hours from now
   const endTime = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
   const updatedAt = now.toISOString();
+
+  // Get selected hackathon tasks
+  const selectedTaskIds = await getSelectedHackathonTasks();
+  
+  // Get all teams
+  const teams = await listTeams();
+  
+  // Assign selected tasks to all teams
+  if (selectedTaskIds.length > 0 && teams.length > 0) {
+    for (const team of teams) {
+      for (const taskId of selectedTaskIds) {
+        try {
+          await assignTask(team.id, taskId);
+        } catch (error) {
+          // Ignore errors for already assigned tasks
+          console.warn(`Task ${taskId} already assigned to team ${team.id}`);
+        }
+      }
+    }
+  }
 
   await db`
     UPDATE hackathon_status

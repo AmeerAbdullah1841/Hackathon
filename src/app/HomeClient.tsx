@@ -125,7 +125,10 @@ export function HomeClient({ initialAdminStatus }: HomeClientProps) {
     startTime: string | null;
     endTime: string | null;
     updatedAt: string;
+    selectedTasks?: string[];
   } | null>(null);
+  const [selectedHackathonTasks, setSelectedHackathonTasks] = useState<string[]>([]);
+  const [hackathonTaskFilter, setHackathonTaskFilter] = useState("");
   const [timerForm, setTimerForm] = useState({
     startTime: "",
     endTime: "",
@@ -164,8 +167,12 @@ export function HomeClient({ initialAdminStatus }: HomeClientProps) {
         startTime: string | null;
         endTime: string | null;
         updatedAt: string;
+        selectedTasks?: string[];
       }>("/api/hackathon");
       setHackathonStatus(status);
+      if (status.selectedTasks) {
+        setSelectedHackathonTasks(status.selectedTasks);
+      }
       if (status.startTime && status.endTime) {
         setTimerForm({
           startTime: status.startTime,
@@ -256,6 +263,10 @@ export function HomeClient({ initialAdminStatus }: HomeClientProps) {
   };
 
   const handleStartHackathon = async () => {
+    if (selectedHackathonTasks.length === 0) {
+      alert("Please select at least one task before starting the hackathon.");
+      return;
+    }
     setHackathonLoading(true);
     try {
       const status = await request<{
@@ -263,15 +274,21 @@ export function HomeClient({ initialAdminStatus }: HomeClientProps) {
         startTime: string | null;
         endTime: string | null;
         updatedAt: string;
+        selectedTasks?: string[];
       }>("/api/hackathon", {
         method: "POST",
         headers: jsonHeaders,
         body: JSON.stringify({ action: "start" }),
       });
       setHackathonStatus(status);
+      if (status.selectedTasks) {
+        setSelectedHackathonTasks(status.selectedTasks);
+      }
       await fetchHackathonStatus();
+      await refreshDashboard();
     } catch (error) {
       console.error("Failed to start hackathon:", error);
+      alert(error instanceof Error ? error.message : "Failed to start hackathon");
     } finally {
       setHackathonLoading(false);
     }
@@ -285,12 +302,16 @@ export function HomeClient({ initialAdminStatus }: HomeClientProps) {
         startTime: string | null;
         endTime: string | null;
         updatedAt: string;
+        selectedTasks?: string[];
       }>("/api/hackathon", {
         method: "POST",
         headers: jsonHeaders,
         body: JSON.stringify({ action: "stop" }),
       });
       setHackathonStatus(status);
+      if (status.selectedTasks) {
+        setSelectedHackathonTasks(status.selectedTasks);
+      }
       await fetchHackathonStatus();
     } catch (error) {
       console.error("Failed to stop hackathon:", error);
@@ -320,6 +341,7 @@ export function HomeClient({ initialAdminStatus }: HomeClientProps) {
         startTime: string | null;
         endTime: string | null;
         updatedAt: string;
+        selectedTasks?: string[];
       }>("/api/hackathon", {
         method: "POST",
         headers: jsonHeaders,
@@ -331,12 +353,69 @@ export function HomeClient({ initialAdminStatus }: HomeClientProps) {
         }),
       });
       setHackathonStatus(status);
+      if (status.selectedTasks) {
+        setSelectedHackathonTasks(status.selectedTasks);
+      }
       await fetchHackathonStatus();
     } catch (error) {
       console.error("Failed to set timer:", error);
     } finally {
       setHackathonLoading(false);
     }
+  };
+
+  const handleSelectHackathonTasks = async () => {
+    if (selectedHackathonTasks.length === 0) {
+      alert("Please select at least one task.");
+      return;
+    }
+    setHackathonLoading(true);
+    try {
+      const status = await request<{
+        isActive: boolean;
+        startTime: string | null;
+        endTime: string | null;
+        updatedAt: string;
+        selectedTasks?: string[];
+      }>("/api/hackathon", {
+        method: "POST",
+        headers: jsonHeaders,
+        body: JSON.stringify({
+          action: "select-tasks",
+          taskIds: selectedHackathonTasks,
+        }),
+      });
+      setHackathonStatus(status);
+      if (status.selectedTasks) {
+        setSelectedHackathonTasks(status.selectedTasks);
+      }
+      alert(`Selected ${selectedHackathonTasks.length} task(s) for the hackathon.`);
+    } catch (error) {
+      console.error("Failed to select tasks:", error);
+      alert(error instanceof Error ? error.message : "Failed to select tasks");
+    } finally {
+      setHackathonLoading(false);
+    }
+  };
+
+  const toggleHackathonTaskSelection = (taskId: string) => {
+    setSelectedHackathonTasks((current) => {
+      const selected = new Set(current);
+      if (selected.has(taskId)) {
+        selected.delete(taskId);
+      } else {
+        selected.add(taskId);
+      }
+      return Array.from(selected);
+    });
+  };
+
+  const handleSelectAllFilteredHackathonTasks = () => {
+    setSelectedHackathonTasks(filteredTasks.map((task) => task.id));
+  };
+
+  const handleClearSelectedHackathonTasks = () => {
+    setSelectedHackathonTasks([]);
   };
 
 
@@ -455,6 +534,18 @@ export function HomeClient({ initialAdminStatus }: HomeClientProps) {
         task.category.toLowerCase().includes(term),
     );
   }, [tasks, taskFilter]);
+
+  const filteredHackathonTasks = useMemo(() => {
+    const term = hackathonTaskFilter.toLowerCase();
+    if (!term) {
+      return tasks;
+    }
+    return tasks.filter(
+      (task) =>
+        task.title.toLowerCase().includes(term) ||
+        task.category.toLowerCase().includes(term),
+    );
+  }, [tasks, hackathonTaskFilter]);
 
   const toggleTaskSelection = (taskId: string) => {
     setAssignmentForm((current) => {
@@ -712,8 +803,9 @@ export function HomeClient({ initialAdminStatus }: HomeClientProps) {
                   <button
                     type="button"
                     onClick={handleStartHackathon}
-                    disabled={hackathonLoading || hackathonStatus?.isActive}
+                    disabled={hackathonLoading || hackathonStatus?.isActive || selectedHackathonTasks.length === 0}
                     className="rounded-xl border-2 border-emerald-500 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title={selectedHackathonTasks.length === 0 ? "Please select tasks before starting" : ""}
                   >
                     Start Hackathon
                   </button>
@@ -988,15 +1080,103 @@ export function HomeClient({ initialAdminStatus }: HomeClientProps) {
               </button>
             </form>
 
+            {!hackathonStatus?.isActive && (
+              <div className="space-y-3 rounded-2xl border-2 border-blue-200 bg-blue-50 p-4">
+                <p className="text-sm font-semibold text-blue-900">Select Tasks for Hackathon</p>
+                <p className="text-xs text-blue-700">
+                  Select tasks that will be automatically assigned to all teams when the hackathon starts.
+                </p>
+                <div className="space-y-2 rounded-xl border border-blue-200 bg-white p-3">
+                  <input
+                    type="text"
+                    value={hackathonTaskFilter}
+                    onChange={(event) => setHackathonTaskFilter(event.target.value)}
+                    placeholder="Filter by title or category"
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                  />
+                  <div className="flex flex-wrap gap-2 text-xs font-medium">
+                    <button
+                      type="button"
+                      onClick={handleSelectAllFilteredHackathonTasks}
+                      className="rounded-full bg-blue-600 px-3 py-1 text-white transition hover:bg-blue-700"
+                      disabled={filteredHackathonTasks.length === 0}
+                    >
+                      Select all ({filteredHackathonTasks.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleClearSelectedHackathonTasks}
+                      className="rounded-full border border-slate-300 px-3 py-1 text-slate-600 hover:border-slate-400"
+                      disabled={selectedHackathonTasks.length === 0}
+                    >
+                      Clear selected
+                    </button>
+                    <span className="self-center text-slate-500">
+                      Selected: {selectedHackathonTasks.length || 0}
+                    </span>
+                  </div>
+                  <div className="max-h-56 space-y-2 overflow-y-auto pr-2">
+                    {filteredHackathonTasks.length === 0 && (
+                      <p className="text-sm text-slate-500">No tasks match this filter.</p>
+                    )}
+                    {filteredHackathonTasks.map((task) => {
+                      const checked = selectedHackathonTasks.includes(task.id);
+                      return (
+                        <label
+                          key={task.id}
+                          className={`flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-2 text-sm transition ${
+                            checked
+                              ? "border-blue-500 bg-blue-100"
+                              : "border-slate-200 hover:border-slate-300"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleHackathonTaskSelection(task.id)}
+                            className="mt-1"
+                          />
+                          <span className="flex flex-col">
+                            <span className="font-semibold text-slate-900">{task.title}</span>
+                            <span className="text-xs uppercase text-slate-500">
+                              {task.category} · {task.points} pts
+                            </span>
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleSelectHackathonTasks}
+                  className="w-full rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                  disabled={selectedHackathonTasks.length === 0 || hackathonLoading}
+                >
+                  {hackathonLoading ? "Saving..." : `Save Selected Tasks (${selectedHackathonTasks.length})`}
+                </button>
+                {hackathonStatus?.selectedTasks && hackathonStatus.selectedTasks.length > 0 && (
+                  <p className="text-xs text-blue-600">
+                    ✓ {hackathonStatus.selectedTasks.length} task(s) currently selected for hackathon
+                  </p>
+                )}
+              </div>
+            )}
+
             <form className="space-y-3" onSubmit={handleAssignment}>
-              <p className="text-sm font-medium text-slate-500">Assign task to team</p>
+              <p className="text-sm font-medium text-slate-500">
+                {hackathonStatus?.isActive 
+                  ? "Manual task assignment (disabled during hackathon)" 
+                  : "Assign task to team (manual)"}
+              </p>
               <select
                 value={assignmentForm.teamId}
                 onChange={(event) =>
                   setAssignmentForm((current) => ({ ...current, teamId: event.target.value }))
                 }
-                className="w-full rounded-xl border border-slate-200 px-3 py-2"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 required
+                disabled={hackathonStatus?.isActive}
               >
                 <option value="">Select team</option>
                 {teams.map((team) => (
@@ -1071,11 +1251,16 @@ export function HomeClient({ initialAdminStatus }: HomeClientProps) {
               </div>
               <button
                 type="submit"
-                className="w-full rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-600 disabled:opacity-50"
-                disabled={!assignmentForm.teamId || assignmentForm.taskIds.length === 0}
+                className="w-full rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={!assignmentForm.teamId || assignmentForm.taskIds.length === 0 || hackathonStatus?.isActive}
               >
-                Assign
+                {hackathonStatus?.isActive ? "Disabled during hackathon" : "Assign"}
               </button>
+              {hackathonStatus?.isActive && (
+                <p className="text-xs text-slate-500">
+                  Manual assignments are disabled while the hackathon is active. All teams have been assigned the selected tasks automatically.
+                </p>
+              )}
             </form>
           </section>
 

@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 
 import {
   getHackathonStatus,
+  getSelectedHackathonTasks,
   setHackathonTimer,
+  setSelectedHackathonTasks,
   startHackathon,
   stopHackathon,
 } from "@/lib/store";
@@ -10,7 +12,8 @@ import {
 export async function GET() {
   try {
     const status = await getHackathonStatus();
-    return NextResponse.json(status);
+    const selectedTasks = await getSelectedHackathonTasks();
+    return NextResponse.json({ ...status, selectedTasks });
   } catch (error) {
     console.error("Failed to get hackathon status:", error);
     return NextResponse.json(
@@ -34,10 +37,12 @@ export async function POST(request: Request) {
   try {
     if (action === "start") {
       const status = await startHackathon();
-      return NextResponse.json(status);
+      const selectedTasks = await getSelectedHackathonTasks();
+      return NextResponse.json({ ...status, selectedTasks });
     } else if (action === "stop") {
       const status = await stopHackathon();
-      return NextResponse.json(status);
+      const selectedTasks = await getSelectedHackathonTasks();
+      return NextResponse.json({ ...status, selectedTasks });
     } else if (action === "set-timer") {
       const { startTime, endTime, isActive } = payload;
       if (!startTime || !endTime) {
@@ -47,10 +52,23 @@ export async function POST(request: Request) {
         );
       }
       const status = await setHackathonTimer(startTime, endTime, Boolean(isActive));
-      return NextResponse.json(status);
+      const selectedTasks = await getSelectedHackathonTasks();
+      return NextResponse.json({ ...status, selectedTasks });
+    } else if (action === "select-tasks") {
+      const { taskIds } = payload;
+      if (!Array.isArray(taskIds)) {
+        return NextResponse.json(
+          { error: "taskIds must be an array" },
+          { status: 400 },
+        );
+      }
+      await setSelectedHackathonTasks(taskIds);
+      const selectedTasks = await getSelectedHackathonTasks();
+      const status = await getHackathonStatus();
+      return NextResponse.json({ ...status, selectedTasks });
     } else {
       return NextResponse.json(
-        { error: "Invalid action. Use 'start', 'stop', or 'set-timer'" },
+        { error: "Invalid action. Use 'start', 'stop', 'set-timer', or 'select-tasks'" },
         { status: 400 },
       );
     }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { deleteTeamSubmissions, resetTeamPassword } from "@/lib/store";
+import { deleteTeam, deleteTeamSubmissions, resetTeamPassword } from "@/lib/store";
 
 type Params = {
   params: Promise<{
@@ -40,6 +40,24 @@ export async function PATCH(
     console.error("Team action failed:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Action failed" },
+      { status: 400 },
+    );
+  }
+}
+
+export async function DELETE(
+  request: Request,
+  { params }: Params,
+) {
+  const { teamId } = await params;
+
+  try {
+    await deleteTeam(teamId);
+    return NextResponse.json({ success: true, message: "Team deleted successfully" });
+  } catch (error) {
+    console.error("Team deletion failed:", error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Failed to delete team" },
       { status: 400 },
     );
   }

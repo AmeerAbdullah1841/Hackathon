@@ -167,6 +167,15 @@ const initializeSchema = async () => {
       )
     `);
 
+    // Create hackathon_tasks table to store selected tasks for the hackathon
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS hackathon_tasks (
+        "taskId" TEXT PRIMARY KEY,
+        "createdAt" TEXT NOT NULL,
+        FOREIGN KEY("taskId") REFERENCES tasks(id) ON DELETE CASCADE
+      )
+    `);
+
     // Create indexes for better query performance
     await pool.query(`
       CREATE INDEX IF NOT EXISTS idx_submissions_teamId ON submissions("teamId");
@@ -174,6 +183,7 @@ const initializeSchema = async () => {
       CREATE INDEX IF NOT EXISTS idx_submissions_status ON submissions(status);
       CREATE INDEX IF NOT EXISTS idx_assignments_teamId ON assignments("teamId");
       CREATE INDEX IF NOT EXISTS idx_assignments_taskId ON assignments("taskId");
+      CREATE INDEX IF NOT EXISTS idx_hackathon_tasks_taskId ON hackathon_tasks("taskId");
     `).catch(() => {
       // Ignore errors if indexes already exist
     });
