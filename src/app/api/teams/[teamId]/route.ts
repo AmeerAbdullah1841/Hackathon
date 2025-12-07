@@ -1,12 +1,36 @@
 import { NextResponse } from "next/server";
 
-import { deleteTeam, deleteTeamSubmissions, resetTeamPassword } from "@/lib/store";
+import { deleteTeam, deleteTeamSubmissions, findTeamById, resetTeamPassword } from "@/lib/store";
 
 type Params = {
   params: Promise<{
     teamId: string;
   }>;
 };
+
+export async function GET(
+  request: Request,
+  { params }: Params,
+) {
+  const { teamId } = await params;
+  
+  try {
+    const team = await findTeamById(teamId);
+    if (!team) {
+      return NextResponse.json(
+        { error: "Team not found" },
+        { status: 404 },
+      );
+    }
+    return NextResponse.json({ team });
+  } catch (error) {
+    console.error("Failed to fetch team:", error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Failed to fetch team" },
+      { status: 500 },
+    );
+  }
+}
 
 export async function PATCH(
   request: Request,

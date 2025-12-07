@@ -242,14 +242,34 @@ export function TeamDashboard({ team, initialAssignments }: Props) {
                           </option>
                         ))}
                       </select>
-                      <Link
-                        href={`/team/${team.id}/assignments/${assignment.id}`}
-                        className={`rounded-xl px-4 py-2 text-sm font-semibold ${
-                          "bg-slate-100 text-slate-900 hover:bg-slate-200"
-                        }`}
-                      >
-                        Open challenge
-                      </Link>
+                      {(() => {
+                        // Check if this is an interactive challenge
+                        const challengeLink = assignment.task?.resources?.find((resource: string) =>
+                          resource.startsWith("/challenges/")
+                        );
+                        
+                        if (challengeLink) {
+                          // Link directly to interactive challenge page
+                          return (
+                            <Link
+                              href={`${challengeLink}?team=${team.id}&assignment=${assignment.id}`}
+                              className="rounded-xl px-4 py-2 text-sm font-semibold bg-purple-600 text-white hover:bg-purple-700"
+                            >
+                              Open Challenge
+                            </Link>
+                          );
+                        }
+                        
+                        // Regular challenge - link to assignment detail page
+                        return (
+                          <Link
+                            href={`/team/${team.id}/assignments/${assignment.id}`}
+                            className="rounded-xl px-4 py-2 text-sm font-semibold bg-slate-100 text-slate-900 hover:bg-slate-200"
+                          >
+                            Open Challenge
+                          </Link>
+                        );
+                      })()}
                     </div>
                   </div>
                 </article>

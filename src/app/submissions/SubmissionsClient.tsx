@@ -154,6 +154,90 @@ export function SubmissionsClient() {
     }
   };
 
+  const getFieldLabels = (submission: SubmissionWithDetails) => {
+    const taskTitle = submission.task?.title?.toLowerCase() || "";
+    const taskCategory = submission.task?.category?.toLowerCase() || "";
+    
+    // Spot the Phish
+    if (taskTitle.includes("phishing") || taskTitle.includes("phish")) {
+      return {
+        plan: "Advanced Red Flags Identified",
+        findings: "Enterprise Prevention Strategies",
+        flag: "Selected Phishing Emails",
+      };
+    }
+    
+    // SQL Injection
+    if (taskTitle.includes("sql injection") || taskTitle.includes("sqli")) {
+      return {
+        plan: "Vulnerability Analysis",
+        findings: "Secure Solution Implementation",
+        flag: "Flag or Answer",
+      };
+    }
+    
+    // Bug Hunt / Code Review
+    if (taskTitle.includes("bug hunt") || taskTitle.includes("code review")) {
+      return {
+        plan: "",
+        findings: "Comprehensive Security Analysis",
+        flag: "Flag or Answer",
+      };
+    }
+    
+    // Network Traffic
+    if (taskTitle.includes("network traffic") || taskTitle.includes("threat hunting")) {
+      return {
+        plan: "",
+        findings: "Comprehensive Threat Intelligence Report",
+        flag: "Flag or Answer",
+      };
+    }
+    
+    // Terms & Conditions
+    if (taskTitle.includes("terms") || taskTitle.includes("conditions") || taskTitle.includes("legal")) {
+      return {
+        plan: "",
+        findings: "Comprehensive Legal Security Audit",
+        flag: "Flag or Answer",
+      };
+    }
+    
+    // Cipher Analysis
+    if (taskTitle.includes("cipher") || taskTitle.includes("cryptographic") || taskTitle.includes("crypto")) {
+      return {
+        plan: "",
+        findings: "Cryptanalysis Methodology",
+        flag: "Decoded Ciphers",
+      };
+    }
+    
+    // Social Media Detector
+    if (taskTitle.includes("social media") || taskTitle.includes("osint")) {
+      return {
+        plan: "",
+        findings: "Security Analysis",
+        flag: "Flag or Answer",
+      };
+    }
+    
+    // Cyber Mad Libs
+    if (taskTitle.includes("mad libs") || taskTitle.includes("scenario")) {
+      return {
+        plan: "",
+        findings: "Completed Story",
+        flag: "Flag or Answer",
+      };
+    }
+    
+    // Default fallback
+    return {
+      plan: "Recon Plan",
+      findings: "Findings",
+      flag: "Flag or Answer",
+    };
+  };
+
   return (
     <div className="min-h-screen bg-slate-100 px-4 py-10 text-slate-900">
       <div className="mx-auto flex max-w-7xl gap-6">
@@ -284,43 +368,55 @@ export function SubmissionsClient() {
                     </div>
                   </div>
 
-                  <div className="grid gap-6 md:grid-cols-2">
-                    <div>
-                      <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-400 mb-2">
-                        Team's Answer
-                      </h3>
-                      <pre className="rounded-xl bg-slate-50 border border-slate-200 p-4 text-xs overflow-x-auto whitespace-pre-wrap">
-                        {formatTeamAnswer(submission)}
-                      </pre>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-400 mb-2">
-                        Expected Answer
-                      </h3>
-                      <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-4 text-sm text-slate-700">
-                        {submission.task?.flag || "N/A"}
+                  {(() => {
+                    const fieldLabels = getFieldLabels(submission);
+                    return (
+                      <div className="grid gap-6 md:grid-cols-2">
+                        <div>
+                          <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-400 mb-2">
+                            {fieldLabels.flag}
+                          </h3>
+                          <pre className="rounded-xl bg-slate-50 border border-slate-200 p-4 text-xs overflow-x-auto whitespace-pre-wrap">
+                            {formatTeamAnswer(submission)}
+                          </pre>
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-400 mb-2">
+                            Expected Answer
+                          </h3>
+                          <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-4 text-sm text-slate-700">
+                            {submission.task?.flag || "N/A"}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
+                    );
+                  })()}
 
-                  <div className="grid gap-6 md:grid-cols-2 mt-6">
-                    <div>
-                      <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-400 mb-2">
-                        Recon Plan
-                      </h3>
-                      <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 text-sm text-slate-700 whitespace-pre-wrap min-h-[100px]">
-                        {submission.plan || <span className="text-slate-400 italic">No plan provided</span>}
+                  {(() => {
+                    const fieldLabels = getFieldLabels(submission);
+                    return (
+                      <div className="grid gap-6 md:grid-cols-2 mt-6">
+                        {fieldLabels.plan && (
+                          <div>
+                            <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-400 mb-2">
+                              {fieldLabels.plan}
+                            </h3>
+                            <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 text-sm text-slate-700 whitespace-pre-wrap min-h-[100px]">
+                              {submission.plan || <span className="text-slate-400 italic">No {fieldLabels.plan.toLowerCase()} provided</span>}
+                            </div>
+                          </div>
+                        )}
+                        <div className={fieldLabels.plan ? "" : "md:col-span-2"}>
+                          <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-400 mb-2">
+                            {fieldLabels.findings}
+                          </h3>
+                          <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 text-sm text-slate-700 whitespace-pre-wrap min-h-[100px]">
+                            {submission.findings || <span className="text-slate-400 italic">No {fieldLabels.findings.toLowerCase()} provided</span>}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-400 mb-2">
-                        Findings
-                      </h3>
-                      <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 text-sm text-slate-700 whitespace-pre-wrap min-h-[100px]">
-                        {submission.findings || <span className="text-slate-400 italic">No findings provided</span>}
-                      </div>
-                    </div>
-                  </div>
+                    );
+                  })()}
 
                   {submission.status === "pending" && (
                     <div className="mt-6 space-y-4">

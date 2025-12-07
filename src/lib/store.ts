@@ -165,6 +165,105 @@ const cybersecuritySeedTasks: Task[] = [
     points: 260,
     resources: [],
   },
+  {
+    id: "challenge-phishing-email-detection",
+    title: "Phishing Email Detection: Advanced Threat Analysis",
+    category: "Email Security",
+    difficulty: "advanced",
+    description:
+      "Analyze 15 sophisticated phishing emails with advanced evasion techniques including homograph attacks, email header spoofing, and multi-stage payloads. Identify all phishing attempts, explain advanced red flags, and propose enterprise-level prevention strategies. Access the interactive challenge at /challenges/spot-the-phish",
+    flag: "flag{phishing_analysis_complete}",
+    points: 350,
+    resources: ["/challenges/spot-the-phish"],
+  },
+  {
+    id: "challenge-sql-injection",
+    title: "SQL Injection: Multi-Vector Exploitation Analysis",
+    category: "Web Security",
+    difficulty: "advanced",
+    description:
+      "Analyze complex SQL injection vulnerabilities across multiple database systems (MySQL, PostgreSQL, MSSQL) with advanced techniques including blind SQLi, time-based attacks, and second-order injection. Identify all vulnerabilities, craft exploit payloads, and implement comprehensive secure coding solutions. Access the interactive challenge at /challenges/sql-injection",
+    flag: "flag{sqli_analysis_complete}",
+    points: 400,
+    resources: ["/challenges/sql-injection"],
+  },
+  {
+    id: "challenge-network-traffic",
+    title: "Network Traffic Analysis: Advanced Threat Hunting",
+    category: "Network Security",
+    difficulty: "advanced",
+    description:
+      "Analyze complex network traffic logs containing advanced persistent threats, encrypted C2 channels, DNS tunneling, and lateral movement patterns. Identify attack chains, correlate events across multiple protocols, and provide comprehensive threat intelligence. Access the interactive challenge at /challenges/network-traffic",
+    flag: "flag{network_analysis_complete}",
+    points: 380,
+    resources: ["/challenges/network-traffic"],
+  },
+  {
+    id: "challenge-terms-trap",
+    title: "Terms & Conditions: Legal Security Audit",
+    category: "Privacy & Compliance",
+    difficulty: "intermediate",
+    description:
+      "Conduct a comprehensive security audit of complex terms and conditions documents. Identify hidden data collection clauses, privacy violations, and compliance issues across 50+ sections. Provide detailed legal analysis and remediation recommendations. Access the interactive challenge at /challenges/terms-trap",
+    flag: "flag{legal_audit_complete}",
+    points: 280,
+    resources: ["/challenges/terms-trap"],
+  },
+  {
+    id: "challenge-cipher-analysis",
+    title: "Cryptographic Analysis: Multi-Algorithm Cipher Breaking",
+    category: "Cryptography",
+    difficulty: "advanced",
+    description:
+      "Decode 25 encrypted messages using various cipher techniques including Caesar, Vigenère, Playfair, and custom substitution ciphers. Some messages use multiple encryption layers or steganographic techniques. Provide detailed cryptanalysis methodology. Access the interactive challenge at /challenges/cipher-analysis",
+    flag: "flag{crypto_analysis_complete}",
+    points: 420,
+    resources: ["/challenges/cipher-analysis"],
+  },
+  {
+    id: "challenge-dark-web-myths",
+    title: "Dark Web Intelligence: Advanced OSINT Quiz",
+    category: "OSINT",
+    difficulty: "intermediate",
+    description:
+      "Test your knowledge of dark web operations, Tor network architecture, cryptocurrency forensics, and threat intelligence gathering. Answer 40 comprehensive questions covering advanced topics in dark web research and analysis. Access the interactive challenge at /challenges/dark-web-myths",
+    flag: "flag{darkweb_quiz_complete}",
+    points: 300,
+    resources: ["/challenges/dark-web-myths"],
+  },
+  {
+    id: "challenge-social-media-detector",
+    title: "Social Media OSINT: Advanced Risk Assessment",
+    category: "OSINT",
+    difficulty: "intermediate",
+    description:
+      "Analyze 20 complex social media posts and profiles for security risks including OSINT gathering techniques, social engineering vectors, and privacy violations. Assess risk levels and provide comprehensive threat modeling for enterprise security teams. Access the interactive challenge at /challenges/social-media-detector",
+    flag: "flag{social_osint_complete}",
+    points: 320,
+    resources: ["/challenges/social-media-detector"],
+  },
+  {
+    id: "challenge-cyber-mad-libs",
+    title: "Security Awareness: Advanced Scenario Building",
+    category: "Security Awareness",
+    difficulty: "beginner",
+    description:
+      "Create comprehensive cybersecurity scenarios through interactive storytelling. Build realistic threat scenarios covering advanced attack vectors, incident response procedures, and security best practices. Access the interactive challenge at /challenges/cyber-mad-libs",
+    flag: "flag{scenario_building_complete}",
+    points: 200,
+    resources: ["/challenges/cyber-mad-libs"],
+  },
+  {
+    id: "challenge-bug-hunt",
+    title: "Security Code Review: Enterprise Bug Hunting",
+    category: "Secure Coding",
+    difficulty: "advanced",
+    description:
+      "Conduct a comprehensive security code review of enterprise-grade applications. Identify critical vulnerabilities including authentication bypasses, authorization flaws, cryptographic weaknesses, and business logic errors. Provide detailed remediation strategies. Access the interactive challenge at /challenges/bug-hunt",
+    flag: "flag{code_review_complete}",
+    points: 450,
+    resources: ["/challenges/bug-hunt"],
+  },
 ];
 
 // Lazy database initialization
@@ -172,11 +271,6 @@ let seeded = false;
 let seedingPromise: Promise<void> | null = null;
 
 const seedTasksIfNeeded = async () => {
-  // If already seeded, return immediately
-  if (seeded) {
-    return;
-  }
-
   // If seeding is in progress, wait for it
   if (seedingPromise) {
     return seedingPromise;
@@ -186,23 +280,20 @@ const seedTasksIfNeeded = async () => {
   seedingPromise = (async () => {
     const db = await getDb();
     
-    // Check if any tasks exist - if yes, mark as seeded (faster check)
-    const existingCount = await db`
-      SELECT COUNT(*)::INTEGER as count FROM tasks LIMIT 1
-    `;
-    
-    if (existingCount.rows[0]?.count > 0) {
-      seeded = true;
-      return;
-    }
-
-    // Batch insert all tasks - use individual inserts with ON CONFLICT for simplicity
-    // This is faster than checking each one individually
+    // Always try to insert/update all tasks - ON CONFLICT will update existing ones
+    // This ensures new challenges are added and existing ones are updated
     for (const task of cybersecuritySeedTasks) {
       await db`
         INSERT INTO tasks (id, title, category, difficulty, description, flag, points, resources)
         VALUES (${task.id}, ${task.title}, ${task.category}, ${task.difficulty}, ${task.description}, ${task.flag}, ${task.points}, ${JSON.stringify(task.resources)})
-        ON CONFLICT (id) DO NOTHING
+        ON CONFLICT (id) DO UPDATE SET
+          title = EXCLUDED.title,
+          category = EXCLUDED.category,
+          difficulty = EXCLUDED.difficulty,
+          description = EXCLUDED.description,
+          flag = EXCLUDED.flag,
+          points = EXCLUDED.points,
+          resources = EXCLUDED.resources
       `;
     }
     
@@ -699,10 +790,25 @@ export const listTeams = async (): Promise<Team[]> => {
 };
 
 export const listTasks = async (): Promise<Task[]> => {
-  // Only seed when listing tasks (tasks are the seed data)
-  await seedTasksIfNeeded();
-  
   const db = await getDb();
+  
+  // Always ensure all seed tasks are present (add/update new challenges)
+  // This allows new challenges to be added even if database already has tasks
+  for (const task of cybersecuritySeedTasks) {
+    await db`
+      INSERT INTO tasks (id, title, category, difficulty, description, flag, points, resources)
+      VALUES (${task.id}, ${task.title}, ${task.category}, ${task.difficulty}, ${task.description}, ${task.flag}, ${task.points}, ${JSON.stringify(task.resources)})
+      ON CONFLICT (id) DO UPDATE SET
+        title = EXCLUDED.title,
+        category = EXCLUDED.category,
+        difficulty = EXCLUDED.difficulty,
+        description = EXCLUDED.description,
+        flag = EXCLUDED.flag,
+        points = EXCLUDED.points,
+        resources = EXCLUDED.resources
+    `;
+  }
+  
   const result = await db`
     SELECT * FROM tasks ORDER BY points ASC
   `;

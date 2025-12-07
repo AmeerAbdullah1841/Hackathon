@@ -2,8 +2,19 @@ import { NextResponse } from "next/server";
 
 import { getHackathonStatus, listSubmissionsWithDetails, reviewSubmission, upsertSubmission } from "@/lib/store";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const assignmentId = searchParams.get("assignmentId");
+    
+    if (assignmentId) {
+      // Get submission for specific assignment
+      const { findSubmissionByAssignmentId } = await import("@/lib/store");
+      const submission = await findSubmissionByAssignmentId(assignmentId);
+      return NextResponse.json({ submission });
+    }
+    
+    // Otherwise return all submissions
     const submissions = await listSubmissionsWithDetails();
     return NextResponse.json(submissions);
   } catch (error) {

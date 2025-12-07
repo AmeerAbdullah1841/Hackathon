@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { AdminSidebar } from "./components/AdminSidebar";
@@ -135,6 +135,7 @@ export function HomeClient({ initialAdminStatus }: HomeClientProps) {
     isActive: false,
   });
   const [hackathonLoading, setHackathonLoading] = useState(false);
+  const hasUnsavedTaskSelectionRef = useRef(false);
 
   const refreshDashboard = useCallback(async () => {
     const [teamData, taskData, assignmentData] = await Promise.all([
@@ -160,7 +161,7 @@ export function HomeClient({ initialAdminStatus }: HomeClientProps) {
     }
   }, []);
 
-  const fetchHackathonStatus = useCallback(async () => {
+  const fetchHackathonStatus = useCallback(async (skipTaskUpdate = false) => {
     try {
       const status = await request<{
         isActive: boolean;
@@ -170,7 +171,10 @@ export function HomeClient({ initialAdminStatus }: HomeClientProps) {
         selectedTasks?: string[];
       }>("/api/hackathon");
       setHackathonStatus(status);
-      if (status.selectedTasks) {
+      // Only update selected tasks from server if:
+      // 1. We're not skipping (initial load or explicit refresh), AND
+      // 2. There are no unsaved local changes
+      if (status.selectedTasks && !skipTaskUpdate && !hasUnsavedTaskSelectionRef.current) {
         setSelectedHackathonTasks(status.selectedTasks);
       }
       if (status.startTime && status.endTime) {
@@ -213,9 +217,10 @@ export function HomeClient({ initialAdminStatus }: HomeClientProps) {
       }).catch((error) => {
         if (mounted) console.error(error);
       });
-      fetchHackathonStatus();
+      fetchHackathonStatus(false); // Initial load - update tasks
       // Poll hackathon status every 30 seconds to check for auto-end
-      const interval = setInterval(fetchHackathonStatus, 30000);
+      // Skip task updates during polling to preserve user selections
+      const interval = setInterval(() => fetchHackathonStatus(true), 30000);
       return () => {
         mounted = false;
         clearInterval(interval);
@@ -284,7 +289,8 @@ export function HomeClient({ initialAdminStatus }: HomeClientProps) {
       if (status.selectedTasks) {
         setSelectedHackathonTasks(status.selectedTasks);
       }
-      await fetchHackathonStatus();
+      hasUnsavedTaskSelectionRef.current = false; // Tasks are saved
+      await fetchHackathonStatus(false); // Refresh with task updates
       await refreshDashboard();
     } catch (error) {
       console.error("Failed to start hackathon:", error);
@@ -312,7 +318,8 @@ export function HomeClient({ initialAdminStatus }: HomeClientProps) {
       if (status.selectedTasks) {
         setSelectedHackathonTasks(status.selectedTasks);
       }
-      await fetchHackathonStatus();
+      hasUnsavedTaskSelectionRef.current = false;
+      await fetchHackathonStatus(false); // Refresh with task updates
     } catch (error) {
       console.error("Failed to stop hackathon:", error);
     } finally {
@@ -356,7 +363,7 @@ export function HomeClient({ initialAdminStatus }: HomeClientProps) {
       if (status.selectedTasks) {
         setSelectedHackathonTasks(status.selectedTasks);
       }
-      await fetchHackathonStatus();
+      await fetchHackathonStatus(false); // Refresh with task updates
     } catch (error) {
       console.error("Failed to set timer:", error);
     } finally {
@@ -388,6 +395,7 @@ export function HomeClient({ initialAdminStatus }: HomeClientProps) {
       setHackathonStatus(status);
       if (status.selectedTasks) {
         setSelectedHackathonTasks(status.selectedTasks);
+        hasUnsavedTaskSelectionRef.current = false; // Changes are now saved
       }
       alert(`Selected ${selectedHackathonTasks.length} task(s) for the hackathon.`);
     } catch (error) {
@@ -408,14 +416,18 @@ export function HomeClient({ initialAdminStatus }: HomeClientProps) {
       }
       return Array.from(selected);
     });
+    // Mark that user has unsaved changes
+    hasUnsavedTaskSelectionRef.current = true;
   };
 
   const handleSelectAllFilteredHackathonTasks = () => {
-    setSelectedHackathonTasks(filteredTasks.map((task) => task.id));
+    setSelectedHackathonTasks(filteredHackathonTasks.map((task) => task.id));
+    hasUnsavedTaskSelectionRef.current = true;
   };
 
   const handleClearSelectedHackathonTasks = () => {
     setSelectedHackathonTasks([]);
+    hasUnsavedTaskSelectionRef.current = true;
   };
 
 
@@ -1267,29 +1279,70 @@ export function HomeClient({ initialAdminStatus }: HomeClientProps) {
           <section className="space-y-4 rounded-3xl bg-white p-6 shadow lg:col-span-2">
             <h2 className="text-xl font-semibold">Live Challenge Board</h2>
             <div className="grid gap-4 md:grid-cols-2">
-              {tasks.map((task) => (
-                <article key={task.id} className="rounded-2xl border border-slate-200 p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-y-1 text-xs uppercase tracking-wide text-slate-400">
-                    <span>{task.category}</span>
-                    <span className="font-semibold text-slate-600">
-                      {task.points} pts · {task.difficulty}
-                    </span>
-                  </div>
-                  <h3 className="mt-2 text-lg font-semibold">{task.title}</h3>
-                  <p className="mt-1 text-sm text-slate-500 break-words">
-                    {task.description}
-                  </p>
-                  {task.resources?.length ? (
-                    <ul className="mt-3 space-y-1 text-xs text-slate-500">
-                      {task.resources.map((resource, index) => (
-                        <li key={resource + index} className="break-words">
-                          🔗 {resource}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : null}
-                </article>
-              ))}
+              {tasks.map((task) => {
+                const isInteractiveChallenge = task.resources?.some(resource => 
+                  resource.startsWith('/challenges/')
+                );
+                const challengeLink = task.resources?.find(resource => 
+                  resource.startsWith('/challenges/')
+                );
+                
+                return (
+                  <article key={task.id} className="rounded-2xl border border-slate-200 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-y-1 text-xs uppercase tracking-wide text-slate-400">
+                      <span>{task.category}</span>
+                      <span className="font-semibold text-slate-600">
+                        {task.points} pts · {task.difficulty}
+                      </span>
+                    </div>
+                    <h3 className="mt-2 text-lg font-semibold">{task.title}</h3>
+                    <p className="mt-1 text-sm text-slate-500 break-words">
+                      {task.description}
+                    </p>
+                    {isInteractiveChallenge && challengeLink ? (
+                      <div className="mt-3">
+                        <a
+                          href={challengeLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700 transition"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            strokeWidth={2}
+                            stroke="currentColor"
+                            className="h-4 w-4"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"
+                            />
+                          </svg>
+                          Open Interactive Challenge
+                        </a>
+                      </div>
+                    ) : task.resources?.length ? (
+                      <ul className="mt-3 space-y-1 text-xs text-slate-500">
+                        {task.resources.map((resource, index) => (
+                          <li key={resource + index} className="break-words">
+                            <a
+                              href={resource}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-800 underline"
+                            >
+                              🔗 {resource}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </article>
+                );
+              })}
             </div>
 
           </section>
