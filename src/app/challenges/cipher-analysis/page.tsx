@@ -228,11 +228,7 @@ function CipherAnalysisPageContent() {
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
           const errorMessage = errorData?.error || "Failed to save submission";
-          if (errorMessage.includes("not currently active")) {
-            alert("The hackathon is not currently active. Please contact your administrator to start the hackathon before submitting.");
-          } else {
-            alert(`Failed to save submission: ${errorMessage}`);
-          }
+          alert(`Failed to save submission: ${errorMessage}`);
           setIsSaving(false);
           return;
         }

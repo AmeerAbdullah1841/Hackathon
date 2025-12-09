@@ -56,7 +56,7 @@ type AdminSession = {
 
 const cybersecuritySeedTasks: Task[] = [
   {
-    id: crypto.randomUUID(),
+    id: "challenge-malware-beacon-chain",
     title: "Malware Analysis: Encrypted Beacon Chain",
     category: "Malware",
     difficulty: "advanced",
@@ -64,10 +64,10 @@ const cybersecuritySeedTasks: Task[] = [
       "A captured malware beacon contains three sequential payloads, each AES-encrypted with a key derived from the previous payload's SHA1 hash. Analysts recovered the initial key: R7s!probe!2024. Decrypt the chain end-to-end and submit the final plaintext command. Flag format: flag{command_here}",
     flag: "flag{command_here}",
     points: 270,
-    resources: [],
+    resources: ["/challenges/malware-beacon-chain"],
   },
   {
-    id: crypto.randomUUID(),
+    id: "challenge-dfir-log-tampering",
     title: "DFIR: Multi-Layer Log Tampering Detection",
     category: "DFIR",
     difficulty: "advanced",
@@ -75,10 +75,10 @@ const cybersecuritySeedTasks: Task[] = [
       "A threat actor modified Linux audit logs to hide a privilege escalation. A compressed .gz log from disk slack space preserves partial records. Decompress, repair the timeline, correlate syscall sequences, and recover the user ID leveraged in the escalation. Flag format: flag{uid1234}",
     flag: "flag{uid1234}",
     points: 260,
-    resources: [],
+    resources: ["/challenges/dfir-log-tampering"],
   },
   {
-    id: crypto.randomUUID(),
+    id: "challenge-email-polyglot-lure",
     title: "Email Forensics: Multipart Polyglot Lure",
     category: "Email",
     difficulty: "advanced",
@@ -86,10 +86,10 @@ const cybersecuritySeedTasks: Task[] = [
       "A phishing email embeds its payload inside a multipart/alternative polyglot that doubles as valid HTML and Base64. Extract the Base64 section, decode it, and identify the C2 domain hidden in a <span style=\"font-size:0px\"> tag. Flag format: flag{c2.example.com}",
     flag: "flag{c2.example.com}",
     points: 240,
-    resources: [],
+    resources: ["/challenges/email-polyglot-lure"],
   },
   {
-    id: crypto.randomUUID(),
+    id: "challenge-reverse-engineering-vm",
     title: "Reverse Engineering: Obfuscated Loader (VM-Based)",
     category: "Reverse Engineering",
     difficulty: "advanced",
@@ -97,10 +97,10 @@ const cybersecuritySeedTasks: Task[] = [
       "A Windows loader hides its unpacking routine behind a custom VM. Reverse the bytecode handlers, emulate the instruction set, recover the decrypted payload, and extract the embedded API token the malware uses for C2 auth. Flag format: flag{token_here}",
     flag: "flag{token_here}",
     points: 320,
-    resources: [],
+    resources: ["/challenges/reverse-engineering-vm"],
   },
   {
-    id: crypto.randomUUID(),
+    id: "challenge-network-timing-channel",
     title: "Network Forensics: Covert Timing Channel",
     category: "Network",
     difficulty: "advanced",
@@ -108,10 +108,10 @@ const cybersecuritySeedTasks: Task[] = [
       "PCAP files show unusual beacon delays to a single IP. Interpret the delta timing (short=0, long=1), rebuild the bitstream, decode the reconstructed payload, and reveal the hidden operator message. Flag format: flag{hidden_data}",
     flag: "flag{hidden_data}",
     points: 250,
-    resources: [],
+    resources: ["/challenges/network-timing-channel"],
   },
   {
-    id: crypto.randomUUID(),
+    id: "challenge-firmware-nor-dump",
     title: "Firmware Security: NOR Dump Deobfuscation",
     category: "Firmware",
     difficulty: "advanced",
@@ -119,10 +119,10 @@ const cybersecuritySeedTasks: Task[] = [
       "A router NOR flash dump contains bootloader environment variables XORed with a rolling 16-bit LFSR. Reverse the polynomial, rebuild the keystream, and recover the plaintext boot arguments to obtain the rootfs_pass value. Flag format: flag{password_here}",
     flag: "flag{password_here}",
     points: 300,
-    resources: [],
+    resources: ["/challenges/firmware-nor-dump"],
   },
   {
-    id: crypto.randomUUID(),
+    id: "challenge-web-deserialization-rce",
     title: "Web Exploitation: Chained Deserialization RCE",
     category: "Web",
     difficulty: "advanced",
@@ -130,10 +130,10 @@ const cybersecuritySeedTasks: Task[] = [
       "An express-session custom serializer plus an SSTI logging bug can be chained for code execution. Craft the gadget payload, trigger the log rendering, achieve RCE, and dump ADMIN_SECRET from the backend environment. Flag format: flag{secret_here}",
     flag: "flag{secret_here}",
     points: 280,
-    resources: [],
+    resources: ["/challenges/web-deserialization-rce"],
   },
   {
-    id: crypto.randomUUID(),
+    id: "challenge-osint-phishing-infra",
     title: "OSINT / Threat Intel: Phishing Infra Pivot",
     category: "OSINT",
     difficulty: "advanced",
@@ -141,10 +141,10 @@ const cybersecuritySeedTasks: Task[] = [
       "A phishing URL rotates across geo-failover servers. Use DNS history, certificate transparency, and CDN misconfiguration pivots to attribute the infrastructure and identify the attacker's hosting provider account name. Flag format: flag{account_name}",
     flag: "flag{account_name}",
     points: 230,
-    resources: [],
+    resources: ["/challenges/osint-phishing-infra"],
   },
   {
-    id: crypto.randomUUID(),
+    id: "challenge-crypto-ecdsa-nonce",
     title: "Crypto: ECDSA Partial Nonce Leakage",
     category: "Crypto",
     difficulty: "advanced",
@@ -152,10 +152,10 @@ const cybersecuritySeedTasks: Task[] = [
       "An attacker reused ECDSA nonces with 24 leaked LSBs. Four signatures and message hashes are provided. Use lattice reduction to recover the private key and present it in hexadecimal. Flag format: flag{deadbeefcafebabe}",
     flag: "flag{deadbeefcafebabe}",
     points: 350,
-    resources: [],
+    resources: ["/challenges/crypto-ecdsa-nonce"],
   },
   {
-    id: crypto.randomUUID(),
+    id: "challenge-cloud-iam-escalation",
     title: "Cloud Security: IAM Shadow Role Escalation",
     category: "Cloud",
     difficulty: "advanced",
@@ -163,7 +163,7 @@ const cybersecuritySeedTasks: Task[] = [
       "A compromised AWS identity can only update IAM role tags. Exploit the misconfigured shadow role trust policy to AssumeRole via crafted tags, escalate privileges, and extract COMPROMISED_KEY from the role's CloudWatch logs. Flag format: flag{key_here}",
     flag: "flag{key_here}",
     points: 260,
-    resources: [],
+    resources: ["/challenges/cloud-iam-escalation"],
   },
   {
     id: "challenge-phishing-email-detection",
@@ -741,6 +741,61 @@ export const createTask = async (task: Omit<Task, "id">) => {
   return newTask;
 };
 
+export const deleteTask = async (taskId: string): Promise<void> => {
+  const db = await getDb();
+  
+  // Check if task is a protected seed task (tasks with fixed IDs starting with "challenge-")
+  // These are the main interactive challenges that should not be deleted
+  const protectedSeedTaskIds = [
+    "challenge-malware-beacon-chain",
+    "challenge-dfir-log-tampering",
+    "challenge-email-polyglot-lure",
+    "challenge-reverse-engineering-vm",
+    "challenge-network-timing-channel",
+    "challenge-firmware-nor-dump",
+    "challenge-web-deserialization-rce",
+    "challenge-osint-phishing-infra",
+    "challenge-crypto-ecdsa-nonce",
+    "challenge-cloud-iam-escalation",
+    "challenge-phishing-email-detection",
+    "challenge-sql-injection",
+    "challenge-network-traffic",
+    "challenge-terms-trap",
+    "challenge-cipher-analysis",
+    "challenge-dark-web-myths",
+    "challenge-social-media-detector",
+    "challenge-cyber-mad-libs",
+    "challenge-bug-hunt",
+  ];
+  
+  if (protectedSeedTaskIds.includes(taskId)) {
+    throw new Error("Cannot delete protected seed tasks. These challenges are system-protected.");
+  }
+  
+  // Delete related assignments first (cascade delete)
+  await db`
+    DELETE FROM assignments WHERE "taskId" = ${taskId}
+  `;
+  
+  // Delete related submissions (via assignments)
+  await db`
+    DELETE FROM submissions 
+    WHERE "assignmentId" IN (
+      SELECT id FROM assignments WHERE "taskId" = ${taskId}
+    )
+  `;
+  
+  // Delete from hackathon_tasks if present
+  await db`
+    DELETE FROM hackathon_tasks WHERE "taskId" = ${taskId}
+  `;
+  
+  // Finally delete the task
+  await db`
+    DELETE FROM tasks WHERE id = ${taskId}
+  `;
+};
+
 export const assignTask = async (teamId: string, taskId: string) => {
   const db = await getDb();
   const teamResult = await db`
@@ -809,6 +864,47 @@ export const listTasks = async (): Promise<Task[]> => {
     `;
   }
   
+  // Clean up duplicate tasks based on title (keep the one with interactive challenge link if available)
+  // First, get all tasks
+  const allTasks = await db`
+    SELECT * FROM tasks ORDER BY points ASC
+  `;
+  
+  const tasksByTitle = new Map<string, any[]>();
+  for (const task of allTasks.rows) {
+    const title = task.title;
+    if (!tasksByTitle.has(title)) {
+      tasksByTitle.set(title, []);
+    }
+    tasksByTitle.get(title)!.push(task);
+  }
+  
+  // For each duplicate group, keep the one with interactive challenge, delete others
+  for (const [title, duplicates] of tasksByTitle.entries()) {
+    if (duplicates.length > 1) {
+      // Find the one with interactive challenge (resource starting with /challenges/)
+      const interactiveTask = duplicates.find(task => {
+        const resources = typeof task.resources === 'string' ? JSON.parse(task.resources) : task.resources;
+        return Array.isArray(resources) && resources.some((r: string) => r && r.startsWith('/challenges/'));
+      });
+      
+      // If we found an interactive one, delete all others
+      // Otherwise, keep the first one (by ID to ensure consistency)
+      const taskToKeep = interactiveTask || duplicates[0];
+      const tasksToDelete = duplicates.filter(t => t.id !== taskToKeep.id);
+      
+      for (const taskToDelete of tasksToDelete) {
+        // Delete related data first
+        await db`DELETE FROM assignments WHERE "taskId" = ${taskToDelete.id}`;
+        await db`DELETE FROM submissions WHERE "assignmentId" IN (SELECT id FROM assignments WHERE "taskId" = ${taskToDelete.id})`;
+        await db`DELETE FROM hackathon_tasks WHERE "taskId" = ${taskToDelete.id}`;
+        // Delete the task
+        await db`DELETE FROM tasks WHERE id = ${taskToDelete.id}`;
+      }
+    }
+  }
+  
+  // Get final list of tasks
   const result = await db`
     SELECT * FROM tasks ORDER BY points ASC
   `;

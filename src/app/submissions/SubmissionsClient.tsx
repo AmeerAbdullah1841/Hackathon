@@ -204,7 +204,7 @@ export function SubmissionsClient() {
     }
     
     // Cipher Analysis
-    if (taskTitle.includes("cipher") || taskTitle.includes("cryptographic") || taskTitle.includes("crypto")) {
+    if (taskTitle.includes("cipher") || taskTitle.includes("cryptographic") || (taskTitle.includes("crypto") && !taskTitle.includes("ecdsa"))) {
       return {
         plan: "",
         findings: "Cryptanalysis Methodology",
@@ -213,7 +213,7 @@ export function SubmissionsClient() {
     }
     
     // Social Media Detector
-    if (taskTitle.includes("social media") || taskTitle.includes("osint")) {
+    if (taskTitle.includes("social media") || (taskTitle.includes("osint") && !taskTitle.includes("phishing infra"))) {
       return {
         plan: "",
         findings: "Security Analysis",
@@ -227,6 +227,96 @@ export function SubmissionsClient() {
         plan: "",
         findings: "Completed Story",
         flag: "Flag or Answer",
+      };
+    }
+    
+    // Malware Analysis
+    if (taskTitle.includes("malware") || taskTitle.includes("beacon chain")) {
+      return {
+        plan: "",
+        findings: "Decryption Methodology",
+        flag: "Decrypted Command",
+      };
+    }
+    
+    // DFIR
+    if (taskTitle.includes("dfir") || taskTitle.includes("log tampering")) {
+      return {
+        plan: "",
+        findings: "Log Analysis & Timeline Reconstruction",
+        flag: "Recovered User ID",
+      };
+    }
+    
+    // Email Forensics
+    if (taskTitle.includes("email forensics") || taskTitle.includes("polyglot")) {
+      return {
+        plan: "",
+        findings: "Email Analysis & Extraction Methodology",
+        flag: "C2 Domain",
+      };
+    }
+    
+    // Reverse Engineering
+    if (taskTitle.includes("reverse engineering") || taskTitle.includes("vm-based")) {
+      return {
+        plan: "",
+        findings: "Reverse Engineering Analysis",
+        flag: "API Token",
+      };
+    }
+    
+    // Network Forensics
+    if (taskTitle.includes("network forensics") || taskTitle.includes("timing channel")) {
+      return {
+        plan: "",
+        findings: "Network Analysis & Timing Channel Extraction",
+        flag: "Hidden Operator Message",
+      };
+    }
+    
+    // Firmware Security
+    if (taskTitle.includes("firmware") || taskTitle.includes("nor dump")) {
+      return {
+        plan: "",
+        findings: "Firmware Analysis & LFSR Reverse Engineering",
+        flag: "Rootfs Password",
+      };
+    }
+    
+    // Web Exploitation
+    if (taskTitle.includes("web exploitation") || taskTitle.includes("deserialization")) {
+      return {
+        plan: "",
+        findings: "Exploitation Chain Analysis",
+        flag: "ADMIN_SECRET",
+      };
+    }
+    
+    // OSINT Phishing Infra
+    if (taskTitle.includes("phishing infra") || taskTitle.includes("threat intel")) {
+      return {
+        plan: "",
+        findings: "OSINT Investigation & Infrastructure Attribution",
+        flag: "Hosting Provider Account Name",
+      };
+    }
+    
+    // Crypto ECDSA
+    if (taskTitle.includes("ecdsa") || taskTitle.includes("nonce leakage")) {
+      return {
+        plan: "",
+        findings: "Lattice Reduction Analysis",
+        flag: "Private Key",
+      };
+    }
+    
+    // Cloud Security
+    if (taskTitle.includes("cloud security") || taskTitle.includes("iam") || taskTitle.includes("shadow role")) {
+      return {
+        plan: "",
+        findings: "Cloud Security Analysis & Exploitation Chain",
+        flag: "COMPROMISED_KEY",
       };
     }
     

@@ -5,6 +5,29 @@ import { useRouter } from "next/navigation";
 
 import { AdminSidebar } from "./components/AdminSidebar";
 
+// Known seed task IDs that should be protected from deletion
+const protectedSeedTaskIds = [
+  "challenge-malware-beacon-chain",
+  "challenge-dfir-log-tampering",
+  "challenge-email-polyglot-lure",
+  "challenge-reverse-engineering-vm",
+  "challenge-network-timing-channel",
+  "challenge-firmware-nor-dump",
+  "challenge-web-deserialization-rce",
+  "challenge-osint-phishing-infra",
+  "challenge-crypto-ecdsa-nonce",
+  "challenge-cloud-iam-escalation",
+  "challenge-phishing-email-detection",
+  "challenge-sql-injection",
+  "challenge-network-traffic",
+  "challenge-terms-trap",
+  "challenge-cipher-analysis",
+  "challenge-dark-web-myths",
+  "challenge-social-media-detector",
+  "challenge-cyber-mad-libs",
+  "challenge-bug-hunt",
+];
+
 type HomeClientProps = {
   initialAdminStatus: "authenticated" | "unauthenticated";
 };
@@ -1286,9 +1309,58 @@ export function HomeClient({ initialAdminStatus }: HomeClientProps) {
                 const challengeLink = task.resources?.find(resource => 
                   resource.startsWith('/challenges/')
                 );
+                const isSeedTask = task.id && protectedSeedTaskIds.includes(task.id);
                 
                 return (
-                  <article key={task.id} className="rounded-2xl border border-slate-200 p-4">
+                  <article key={task.id} className="relative rounded-2xl border border-slate-200 p-4">
+                    {!isSeedTask && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (!confirm(`Are you sure you want to delete "${task.title}"? This will also delete all related assignments and submissions. This action cannot be undone.`)) {
+                            return;
+                          }
+                          
+                          try {
+                            const response = await fetch(`/api/tasks?id=${task.id}`, {
+                              method: "DELETE",
+                            });
+                            
+                            if (response.ok) {
+                              // Refresh tasks list
+                              const tasksResponse = await fetch("/api/tasks");
+                              if (tasksResponse.ok) {
+                                const updatedTasks = await tasksResponse.json();
+                                setTasks(updatedTasks);
+                              }
+                            } else {
+                              const error = await response.json();
+                              alert(error.error || "Failed to delete challenge");
+                            }
+                          } catch (error) {
+                            console.error("Delete error:", error);
+                            alert("Failed to delete challenge. Please try again.");
+                          }
+                        }}
+                        className="absolute top-3 right-3 rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 transition"
+                        title="Delete challenge"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          strokeWidth={2}
+                          stroke="currentColor"
+                          className="h-5 w-5"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
+                          />
+                        </svg>
+                      </button>
+                    )}
                     <div className="flex flex-wrap items-center justify-between gap-y-1 text-xs uppercase tracking-wide text-slate-400">
                       <span>{task.category}</span>
                       <span className="font-semibold text-slate-600">

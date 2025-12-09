@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { createTask, listTasks } from "@/lib/store";
+import { createTask, deleteTask, listTasks } from "@/lib/store";
 
 export async function GET() {
   try {
@@ -44,4 +44,27 @@ export async function POST(request: Request) {
   });
 
   return NextResponse.json(task, { status: 201 });
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const taskId = searchParams.get("id");
+
+    if (!taskId) {
+      return NextResponse.json(
+        { error: "Task ID is required" },
+        { status: 400 },
+      );
+    }
+
+    await deleteTask(taskId);
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Tasks DELETE error:", error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Failed to delete task" },
+      { status: 500 },
+    );
+  }
 }
