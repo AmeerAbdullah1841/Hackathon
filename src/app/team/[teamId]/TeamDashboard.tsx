@@ -226,14 +226,14 @@ export function TeamDashboard({ team, initialAssignments }: Props) {
           </div>
         </header>
 
-        <main className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+        <main className="space-y-8">
           <section className="rounded-3xl bg-white p-6 shadow">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between mb-6">
               <div>
                 <p className="text-sm uppercase tracking-[0.2em] text-slate-400">
                   Assigned challenges
                 </p>
-                <h2 className="mt-1 text-2xl font-semibold">Mission queue</h2>
+                <h2 className="mt-1 text-2xl font-semibold">Challenges</h2>
               </div>
               {statusMessage && (
                 <p className="text-xs font-medium text-emerald-600">
@@ -242,79 +242,92 @@ export function TeamDashboard({ team, initialAssignments }: Props) {
               )}
             </div>
 
-            <div className="mt-6 space-y-4">
-              {!assignments.length && (
-                <p className="rounded-2xl border border-dashed border-slate-200 px-4 py-3 text-sm text-slate-500">
-                  No challenges yet. Ping your administrator for assignments.
-                </p>
-              )}
-              {assignments.map((assignment) => (
-                <article
-                  key={assignment.id}
-                  className="rounded-2xl border border-slate-200 p-4 transition hover:border-slate-300"
-                >
-                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                    <div>
-                      <p className="text-xs uppercase tracking-wide text-slate-400">
-                        {assignment.task?.category ?? "Challenge"}
-                      </p>
-                      <h3 className="text-lg font-semibold">
-                        {assignment.task?.title ?? "Untitled challenge"}
-                      </h3>
-                      <p className="text-sm text-slate-500">
-                        {assignment.task?.difficulty ?? "intermediate"} ·{" "}
-                        {assignment.task?.points ?? 0} points
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <select
-                        value={assignment.status}
-                        onChange={(event) =>
-                          handleStatusChange(
-                            assignment.id,
-                            event.target.value as AssignmentWithTask["status"],
-                          )
-                        }
-                        className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-                        disabled={updatingAssignmentId === assignment.id}
-                      >
-                        {statusOptions.map((status) => (
-                          <option key={status} value={status}>
-                            {status}
-                          </option>
-                        ))}
-                      </select>
-                      {(() => {
-                        // Check if this is an interactive challenge
-                        const challengeLink = getChallengeRoute(assignment.task);
-                        
-                        if (challengeLink) {
-                          // Link directly to interactive challenge page
+            {!assignments.length ? (
+              <p className="rounded-2xl border border-dashed border-slate-200 px-4 py-3 text-sm text-slate-500">
+                No challenges yet. Ping your administrator for assignments.
+              </p>
+            ) : (
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {assignments.map((assignment) => (
+                  <article
+                    key={assignment.id}
+                    className="rounded-2xl border border-slate-200 p-5 transition hover:border-slate-300 hover:shadow-md"
+                  >
+                    <div className="flex flex-col h-full">
+                      <div className="flex-1">
+                        <p className="text-xs uppercase tracking-wide text-slate-400 mb-2">
+                          {assignment.task?.category ?? "Challenge"}
+                        </p>
+                        <h3 className="text-lg font-semibold mb-2 line-clamp-2">
+                          {assignment.task?.title ?? "Untitled challenge"}
+                        </h3>
+                        <div className="flex items-center gap-2 mb-4">
+                          <span className={`text-xs font-semibold px-2 py-1 rounded ${
+                            assignment.task?.difficulty === "beginner"
+                              ? "bg-green-100 text-green-700"
+                              : assignment.task?.difficulty === "intermediate"
+                              ? "bg-yellow-100 text-yellow-700"
+                              : "bg-red-100 text-red-700"
+                          }`}>
+                            {assignment.task?.difficulty?.toUpperCase() ?? "INTERMEDIATE"}
+                          </span>
+                          <span className="text-xs text-slate-500">
+                            {assignment.task?.points ?? 0} points
+                          </span>
+                        </div>
+                        <div className="mb-4">
+                          <select
+                            value={assignment.status}
+                            onChange={(event) =>
+                              handleStatusChange(
+                                assignment.id,
+                                event.target.value as AssignmentWithTask["status"],
+                              )
+                            }
+                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                            disabled={updatingAssignmentId === assignment.id}
+                          >
+                            {statusOptions.map((status) => (
+                              <option key={status} value={status}>
+                                {status}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                      <div className="mt-auto">
+                        {(() => {
+                          // Check if this is an interactive challenge
+                          const challengeLink = getChallengeRoute(assignment.task);
+                          
+                          if (challengeLink) {
+                            // Link directly to interactive challenge page
+                            return (
+                              <Link
+                                href={`${challengeLink}?team=${team.id}&assignment=${assignment.id}`}
+                                className="block w-full text-center rounded-xl px-4 py-2 text-sm font-semibold bg-purple-600 text-white hover:bg-purple-700 transition"
+                              >
+                                Open Challenge
+                              </Link>
+                            );
+                          }
+                          
+                          // Regular challenge - link to assignment detail page
                           return (
                             <Link
-                              href={`${challengeLink}?team=${team.id}&assignment=${assignment.id}`}
-                              className="rounded-xl px-4 py-2 text-sm font-semibold bg-purple-600 text-white hover:bg-purple-700"
+                              href={`/team/${team.id}/assignments/${assignment.id}`}
+                              className="block w-full text-center rounded-xl px-4 py-2 text-sm font-semibold bg-slate-100 text-slate-900 hover:bg-slate-200 transition"
                             >
                               Open Challenge
                             </Link>
                           );
-                        }
-                        
-                        // Regular challenge - link to assignment detail page
-                        return (
-                          <Link
-                            href={`/team/${team.id}/assignments/${assignment.id}`}
-                            className="rounded-xl px-4 py-2 text-sm font-semibold bg-slate-100 text-slate-900 hover:bg-slate-200"
-                          >
-                            Open Challenge
-                          </Link>
-                        );
-                      })()}
+                        })()}
+                      </div>
                     </div>
-                  </div>
-                </article>
-              ))}
-            </div>
+                  </article>
+                ))}
+              </div>
+            )}
           </section>
 
           <aside className="rounded-3xl bg-white p-6 shadow">
@@ -322,7 +335,7 @@ export function TeamDashboard({ team, initialAssignments }: Props) {
               Quick stats
             </p>
             <h2 className="mt-1 text-2xl font-semibold">Engagement radar</h2>
-            <div className="mt-6 space-y-4 text-sm">
+            <div className="mt-6 grid gap-4 sm:grid-cols-3 text-sm">
               <div className="rounded-2xl border border-slate-200 p-4">
                 <p className="text-xs uppercase tracking-wide text-slate-400">
                   In progress
