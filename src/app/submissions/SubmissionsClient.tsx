@@ -320,6 +320,168 @@ export function SubmissionsClient() {
       };
     }
     
+    // Base64 Detective
+    if (taskTitle.includes("base64") && taskTitle.includes("detective")) {
+      return {
+        plan: "Decoding Methodology",
+        findings: "Decoded Message",
+        flag: "Flag",
+      };
+    }
+    
+    // ROT All The Things
+    if (taskTitle.includes("rot all the things") || (taskTitle.includes("rot") && taskTitle.includes("all"))) {
+      return {
+        plan: "Decoding Methodology",
+        findings: "Decoded Message",
+        flag: "Flag",
+      };
+    }
+    
+    // Hex Dump Message
+    if (taskTitle.includes("hex dump") || (taskTitle.includes("hex") && taskTitle.includes("message"))) {
+      return {
+        plan: "Conversion Methodology",
+        findings: "Decoded Message",
+        flag: "Flag",
+      };
+    }
+    
+    // Active Directory Privilege Escalation
+    if (taskTitle.includes("active directory") || (taskTitle.includes("ad") && taskTitle.includes("privilege"))) {
+      return {
+        plan: "Escalation Methodology",
+        findings: "Escalation Path",
+        flag: "Flag",
+      };
+    }
+    
+    // Blockchain Smart Contract Exploit
+    if (taskTitle.includes("blockchain") || (taskTitle.includes("smart contract") && taskTitle.includes("exploit"))) {
+      return {
+        plan: "Exploitation Methodology",
+        findings: "Exploit Details",
+        flag: "Flag",
+      };
+    }
+    
+    // Port Knock Sequence
+    if (taskTitle.includes("port knock") || taskTitle.includes("port sequence")) {
+      return {
+        plan: "Analysis Methodology",
+        findings: "Next 3 Ports",
+        flag: "Flag",
+      };
+    }
+    
+    // SQL Injection Theory
+    if (taskTitle.includes("sql injection theory") || (taskTitle.includes("sql") && taskTitle.includes("theory"))) {
+      return {
+        plan: "Analysis Methodology",
+        findings: "SQL Injection Payload",
+        flag: "Flag",
+      };
+    }
+    
+    // OSINT Challenge
+    if (taskTitle.includes("osint challenge") || (taskTitle.includes("osint") && !taskTitle.includes("phishing infra"))) {
+      return {
+        plan: "Investigation Methodology",
+        findings: "Answers",
+        flag: "Flag",
+      };
+    }
+    
+    // Hash Cracker
+    if (taskTitle.includes("hash cracker") || (taskTitle.includes("hash") && taskTitle.includes("crack"))) {
+      return {
+        plan: "Cracking Methodology",
+        findings: "Cracked Passwords",
+        flag: "Flag",
+      };
+    }
+    
+    // Caesar Cipher With Twist
+    if (taskTitle.includes("caesar cipher") || (taskTitle.includes("caesar") && taskTitle.includes("twist"))) {
+      return {
+        plan: "Decryption Methodology",
+        findings: "Decrypted Message",
+        flag: "Flag",
+      };
+    }
+    
+    // JWT Decode Challenge
+    if (taskTitle.includes("jwt decode") || (taskTitle.includes("jwt") && taskTitle.includes("decode"))) {
+      return {
+        plan: "Decoding Methodology",
+        findings: "Decoded Payload",
+        flag: "Flag",
+      };
+    }
+    
+    // Python Code Review
+    if (taskTitle.includes("python code review") || (taskTitle.includes("python") && taskTitle.includes("code review"))) {
+      return {
+        plan: "Review Methodology",
+        findings: "Identified Vulnerabilities",
+        flag: "Flag",
+      };
+    }
+    
+    // OAuth Flow Exploit
+    if (taskTitle.includes("oauth flow") || (taskTitle.includes("oauth") && taskTitle.includes("exploit"))) {
+      return {
+        plan: "Exploitation Methodology",
+        findings: "Exploit Details",
+        flag: "Flag",
+      };
+    }
+    
+    // Cipher Chain
+    if (taskTitle.includes("cipher chain") || (taskTitle.includes("cipher") && taskTitle.includes("chain"))) {
+      return {
+        plan: "Decoding Methodology",
+        findings: "Decoded Message",
+        flag: "Flag",
+      };
+    }
+    
+    // RSA Small Exponent
+    if (taskTitle.includes("rsa small") || (taskTitle.includes("rsa") && taskTitle.includes("exponent"))) {
+      return {
+        plan: "Decryption Methodology",
+        findings: "Decrypted Message",
+        flag: "Flag",
+      };
+    }
+    
+    // Memory Dump Analysis
+    if (taskTitle.includes("memory dump") || (taskTitle.includes("memory") && taskTitle.includes("dump"))) {
+      return {
+        plan: "Analysis Methodology",
+        findings: "Extracted Data",
+        flag: "Flag",
+      };
+    }
+    
+    // Regex Bypass
+    if (taskTitle.includes("regex bypass") || (taskTitle.includes("regex") && taskTitle.includes("bypass"))) {
+      return {
+        plan: "Bypass Methodology",
+        findings: "Bypass Payload",
+        flag: "Flag",
+      };
+    }
+    
+    // Logic Bomb Discovery
+    if (taskTitle.includes("logic bomb") || (taskTitle.includes("logic") && taskTitle.includes("bomb"))) {
+      return {
+        plan: "Analysis Methodology",
+        findings: "Identified Logic Bombs",
+        flag: "Flag",
+      };
+    }
+    
     // Default fallback
     return {
       plan: "Recon Plan",

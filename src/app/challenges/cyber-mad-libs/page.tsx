@@ -189,6 +189,33 @@ export default function CyberMadLibsPage() {
 
         {/* Challenge Section */}
         <div className="rounded-2xl bg-white p-6 shadow">
+          <div className="mb-6">
+            <h3 className="mb-2 text-2xl font-bold">Challenge Description</h3>
+            <p className="text-slate-700">
+              Create comprehensive cybersecurity scenarios through interactive storytelling. Build realistic threat scenarios covering advanced attack vectors, incident response procedures, and security best practices.
+            </p>
+          </div>
+
+          {/* Challenge Materials */}
+          <div className="mb-6 rounded-xl border-2 border-purple-200 bg-purple-50 p-4">
+            <h4 className="mb-3 font-semibold text-purple-900">Challenge Materials</h4>
+            <div className="space-y-4">
+              <div>
+                <p className="mb-2 text-sm font-semibold text-purple-800">Story Template:</p>
+                <div className="rounded-lg bg-white p-4">
+                  <pre className="whitespace-pre-wrap text-sm font-mono text-slate-700">
+                    {storyTemplate}
+                  </pre>
+                </div>
+              </div>
+              <div className="mt-4 rounded-lg bg-yellow-50 border border-yellow-200 p-3">
+                <p className="text-xs text-yellow-800">
+                  <strong>Note:</strong> Fill in the blanks with appropriate cybersecurity terms to create a realistic data breach scenario. Think about real-world attack vectors, security vulnerabilities, and incident response procedures.
+                </p>
+              </div>
+            </div>
+          </div>
+
           <div className="mb-4 flex items-center justify-between">
             <h3 className="text-2xl font-bold">The Data Breach</h3>
             <button

@@ -274,30 +274,42 @@ function BugHuntPageContent() {
 
         {/* Challenge Section */}
         <div className="rounded-2xl bg-white p-6 shadow">
-          <h3 className="mb-4 text-2xl font-bold">
-            Enterprise Security Code Review: Identify Critical Vulnerabilities
-          </h3>
-          <p className="mb-6 text-slate-600">
-            Conduct a comprehensive security code review of enterprise-grade applications. Identify 
-            critical vulnerabilities including authentication bypasses, authorization flaws, cryptographic 
-            weaknesses, business logic errors, and insecure design patterns. Provide detailed remediation 
-            strategies with complete secure code examples.
-          </p>
-
           <div className="mb-6">
-            <h4 className="mb-3 font-semibold">Code to Analyze:</h4>
-            <div className="rounded-lg border-2 border-red-200 bg-red-50 p-4">
-              <pre className="overflow-x-auto text-sm">
-                <code>{vulnerableCode}</code>
-              </pre>
+            <h3 className="mb-2 text-2xl font-bold">Challenge Description</h3>
+            <p className="text-slate-700">
+              Conduct a comprehensive security code review of enterprise-grade applications. Identify 
+              critical vulnerabilities including authentication bypasses, authorization flaws, cryptographic 
+              weaknesses, business logic errors, and insecure design patterns. Provide detailed remediation 
+              strategies with complete secure code examples.
+            </p>
+          </div>
+
+          {/* Challenge Materials */}
+          <div className="mb-6 rounded-xl border-2 border-purple-200 bg-purple-50 p-4">
+            <h4 className="mb-3 font-semibold text-purple-900">Challenge Materials</h4>
+            <div className="space-y-4">
+              <div>
+                <p className="mb-2 text-sm font-semibold text-purple-800">Vulnerable Application Code:</p>
+                <div className="rounded-lg border-2 border-red-200 bg-white p-4">
+                  <pre className="overflow-x-auto text-xs font-mono">
+                    <code>{vulnerableCode}</code>
+                  </pre>
+                </div>
+              </div>
+              <div className="mt-4 rounded-lg bg-yellow-50 border border-yellow-200 p-3">
+                <p className="text-xs text-yellow-800">
+                  <strong>Note:</strong> Review each function carefully. Look for common vulnerabilities like hardcoded credentials, SQL injection, insecure authentication, missing input validation, insecure file handling, plain text storage, authorization bypass, and session management issues.
+                </p>
+              </div>
             </div>
           </div>
 
-          <div>
-            <label className="mb-2 block font-semibold">
-              Comprehensive Security Analysis:
-            </label>
-            <p className="mb-2 text-sm text-slate-600">
+          <div className="space-y-6">
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
+                Comprehensive Security Analysis:
+              </label>
+              <p className="mb-2 text-sm text-slate-600">
               Provide a detailed security code review. For each vulnerability, identify: vulnerability type 
               (CWE classification), severity (CVSS score if applicable), attack vectors, exploitation scenarios, 
               business impact, and complete remediation code. Include secure coding best practices and 
@@ -312,6 +324,7 @@ function BugHuntPageContent() {
             <p className="mt-1 text-xs text-slate-500">
               {analysis.length} characters
             </p>
+            </div>
           </div>
 
           <div className="mt-6">

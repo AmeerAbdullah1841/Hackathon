@@ -19,6 +19,48 @@ type Props = {
 
 const jsonHeaders = { "Content-Type": "application/json" } as const;
 
+// Mapping of challenge titles to their interactive challenge routes
+const challengeRouteMap: Record<string, string> = {
+  "Base64 Detective": "/challenges/base64-detective",
+  "ROT All The Things": "/challenges/rot-all-the-things",
+  "Hex Dump Message": "/challenges/hex-dump-message",
+  "Active Directory Privilege Escalation": "/challenges/active-directory-privilege-escalation",
+  "Blockchain Smart Contract Exploit": "/challenges/blockchain-smart-contract-exploit",
+  "Port Knock Sequence": "/challenges/port-knock-sequence",
+  "SQL Injection Theory": "/challenges/sql-injection-theory",
+  "OSINT Challenge": "/challenges/osint-challenge",
+  "Hash Cracker": "/challenges/hash-cracker",
+  "Caesar Cipher With Twist": "/challenges/caesar-cipher-with-twist",
+  "JWT Decode Challenge": "/challenges/jwt-decode-challenge",
+  "Python Code Review": "/challenges/python-code-review",
+  "OAuth Flow Exploit": "/challenges/oauth-flow-exploit",
+  "Cipher Chain": "/challenges/cipher-chain",
+  "RSA Small Exponent": "/challenges/rsa-small-exponent",
+  "Memory Dump Analysis": "/challenges/memory-dump-analysis",
+  "Regex Bypass": "/challenges/regex-bypass",
+  "Logic Bomb Discovery": "/challenges/logic-bomb-discovery",
+};
+
+// Helper function to get challenge route
+const getChallengeRoute = (task: AssignmentWithTask["task"]): string | null => {
+  if (!task) return null;
+  
+  // First, check if resources already contain a /challenges/ path
+  const resourceLink = task.resources?.find((resource: string) =>
+    resource.startsWith("/challenges/")
+  );
+  if (resourceLink) {
+    return resourceLink;
+  }
+  
+  // Fallback: check title mapping
+  if (task.title && challengeRouteMap[task.title]) {
+    return challengeRouteMap[task.title];
+  }
+  
+  return null;
+};
+
 export function TeamDashboard({ team, initialAssignments }: Props) {
   const router = useRouter();
   const [assignments, setAssignments] =
@@ -244,9 +286,7 @@ export function TeamDashboard({ team, initialAssignments }: Props) {
                       </select>
                       {(() => {
                         // Check if this is an interactive challenge
-                        const challengeLink = assignment.task?.resources?.find((resource: string) =>
-                          resource.startsWith("/challenges/")
-                        );
+                        const challengeLink = getChallengeRoute(assignment.task);
                         
                         if (challengeLink) {
                           // Link directly to interactive challenge page

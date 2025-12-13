@@ -258,11 +258,10 @@ export default function TermsTrapPage() {
 
         {/* Challenge Section */}
         <div className="rounded-2xl bg-white p-6 shadow">
-          <h3 className="mb-4 text-2xl font-bold">
-            Conduct a comprehensive security audit of terms and conditions
-          </h3>
-          <p className="mb-4 text-slate-600">
-            Analyze 50+ sections for hidden data collection clauses, privacy violations, compliance issues, 
+          <div className="mb-6">
+            <h3 className="mb-2 text-2xl font-bold">Challenge Description</h3>
+            <p className="text-slate-700">
+              Conduct a comprehensive security audit of terms and conditions documents. Analyze 50+ sections for hidden data collection clauses, privacy violations, compliance issues, 
             and legal security risks. Identify all suspicious clauses and provide detailed legal analysis 
             with remediation recommendations.
           </p>
@@ -274,6 +273,7 @@ export default function TermsTrapPage() {
                 {termsAndConditions}
               </pre>
             </div>
+          </div>
           </div>
 
           <div>

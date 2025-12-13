@@ -199,14 +199,32 @@ export default function NetworkTrafficPage() {
 
         {/* Challenge Section */}
         <div className="rounded-2xl bg-white p-6 shadow">
-          <h3 className="mb-4 text-2xl font-bold">
-            Advanced Network Traffic Analysis: Identify APTs, C2 Channels, and Attack Chains
-          </h3>
-          <p className="mb-6 text-slate-600">
-            Analyze complex network traffic containing advanced persistent threats, encrypted C2 channels, 
-            DNS tunneling, lateral movement patterns, and multi-stage attack sequences. Correlate events 
-            across multiple protocols and provide comprehensive threat intelligence.
-          </p>
+          <div className="mb-6">
+            <h3 className="mb-2 text-2xl font-bold">Challenge Description</h3>
+            <p className="text-slate-700">
+              Analyze complex network traffic containing advanced persistent threats, encrypted C2 channels, 
+              DNS tunneling, lateral movement patterns, and multi-stage attack sequences. Correlate events 
+              across multiple protocols and provide comprehensive threat intelligence.
+            </p>
+          </div>
+
+          {/* Challenge Materials */}
+          <div className="mb-6 rounded-xl border-2 border-purple-200 bg-purple-50 p-4">
+            <h4 className="mb-3 font-semibold text-purple-900">Challenge Materials</h4>
+            <div className="space-y-4">
+              <div>
+                <p className="mb-2 text-sm font-semibold text-purple-800">Network Traffic Logs:</p>
+                <div className="rounded-lg bg-white p-4 max-h-96 overflow-y-auto">
+                  <pre className="whitespace-pre-wrap font-mono text-xs">{networkLogs}</pre>
+                </div>
+              </div>
+              <div className="mt-4 rounded-lg bg-yellow-50 border border-yellow-200 p-3">
+                <p className="text-xs text-yellow-800">
+                  <strong>Note:</strong> Analyze the network logs for attack patterns, failed login attempts, port scanning, SQL injection attempts, XSS payloads, directory traversal, and other suspicious activities. Identify threat actors, attack vectors, and provide comprehensive threat intelligence.
+                </p>
+              </div>
+            </div>
+          </div>
 
           <div className="mb-6 rounded-lg border-2 border-slate-200 bg-slate-50 p-4">
             <h4 className="mb-3 font-semibold">Network Logs:</h4>

@@ -239,6 +239,41 @@ export default function DarkWebMythsPage() {
 
         {/* Quiz Section */}
         <div className="rounded-2xl bg-white p-6 shadow">
+          <div className="mb-6">
+            <h3 className="mb-2 text-2xl font-bold">Challenge Description</h3>
+            <p className="text-slate-700">
+              Test your knowledge of dark web operations, Tor network architecture, cryptocurrency forensics, and threat intelligence gathering. Answer {questions.length} comprehensive questions covering advanced topics in dark web research and analysis.
+            </p>
+          </div>
+
+          {/* Challenge Materials */}
+          <div className="mb-6 rounded-xl border-2 border-purple-200 bg-purple-50 p-4">
+            <h4 className="mb-3 font-semibold text-purple-900">Challenge Materials</h4>
+            <div className="space-y-4">
+              <div>
+                <p className="mb-2 text-sm font-semibold text-purple-800">Quiz Questions:</p>
+                <div className="rounded-lg bg-white p-4">
+                  <p className="text-sm text-slate-700">
+                    This challenge contains {questions.length} questions covering topics such as:
+                  </p>
+                  <ul className="mt-2 ml-4 list-disc space-y-1 text-sm text-slate-700">
+                    <li>Dark web vs deep web vs surface web</li>
+                    <li>Tor network architecture and hidden services</li>
+                    <li>Cryptocurrency forensics and blockchain analysis</li>
+                    <li>Threat intelligence gathering techniques</li>
+                    <li>Privacy and anonymity on the dark web</li>
+                    <li>Legal and ethical considerations</li>
+                  </ul>
+                </div>
+              </div>
+              <div className="mt-4 rounded-lg bg-yellow-50 border border-yellow-200 p-3">
+                <p className="text-xs text-yellow-800">
+                  <strong>Note:</strong> Answer all questions based on your knowledge of dark web operations, OSINT techniques, and cybersecurity best practices. Questions are spread across {Math.ceil(questions.length / 10)} pages.
+                </p>
+              </div>
+            </div>
+          </div>
+
           <div className="mb-4 flex items-center justify-between">
             <h3 className="text-2xl font-bold">Test your knowledge about dark web facts vs fiction</h3>
             <span className="text-sm text-slate-500">

@@ -328,14 +328,41 @@ function CipherAnalysisPageContent() {
 
         {/* Challenge Section */}
         <div className="rounded-2xl bg-white p-6 shadow">
-          <h3 className="mb-4 text-2xl font-bold">
-            Decode {ciphers.length} encrypted messages using various cipher techniques
-          </h3>
-          <p className="mb-6 text-slate-600">
-            Messages use Caesar, Vigenère, Playfair, custom substitution ciphers, and multi-layer encryption. 
-            Some messages include steganographic techniques. Provide detailed cryptanalysis methodology. 
-            Current progress: {Object.keys(decoded).length}/{ciphers.length} required
-          </p>
+          <div className="mb-6">
+            <h3 className="mb-2 text-2xl font-bold">Challenge Description</h3>
+            <p className="text-slate-700">
+              Decode {ciphers.length} encrypted messages using various cipher techniques including Caesar, Vigenère, 
+              Playfair, and custom substitution ciphers. Some messages use multiple encryption layers or 
+              steganographic techniques. Provide detailed cryptanalysis methodology. 
+              Current progress: {Object.keys(decoded).length}/{ciphers.length} required
+            </p>
+          </div>
+
+          {/* Challenge Materials */}
+          <div className="mb-6 rounded-xl border-2 border-purple-200 bg-purple-50 p-4">
+            <h4 className="mb-3 font-semibold text-purple-900">Challenge Materials</h4>
+            <div className="space-y-4">
+              <div>
+                <p className="mb-2 text-sm font-semibold text-purple-800">Encrypted Cipher Messages:</p>
+                <div className="rounded-lg bg-white p-3 max-h-60 overflow-y-auto">
+                  <ul className="space-y-2 text-xs font-mono">
+                    {ciphers.map((cipher) => (
+                      <li key={cipher.id} className="border-b border-purple-100 pb-2">
+                        <span className="font-semibold">Cipher #{cipher.id}:</span> {cipher.encoded}
+                        <br />
+                        <span className="text-purple-600">Hint: {cipher.hint}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+              <div className="mt-4 rounded-lg bg-yellow-50 border border-yellow-200 p-3">
+                <p className="text-xs text-yellow-800">
+                  <strong>Note:</strong> All ciphers use Caesar cipher with various shift values (positive for forward, negative for backward). Analyze the patterns, try different shifts, and decode each message. Document your methodology for each cipher.
+                </p>
+              </div>
+            </div>
+          </div>
 
           <div className="space-y-4">
             {ciphers.map((cipher) => (

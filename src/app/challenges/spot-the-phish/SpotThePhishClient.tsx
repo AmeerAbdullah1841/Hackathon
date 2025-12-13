@@ -551,8 +551,46 @@ export function SpotThePhishClient() {
 
         {/* Challenge Instructions */}
         <div className="rounded-2xl bg-white p-6 shadow">
+          <div className="mb-6">
+            <h3 className="mb-2 text-2xl font-bold">Challenge Description</h3>
+            <p className="text-slate-700">
+              Analyze 15 sophisticated phishing emails with advanced evasion techniques including homograph attacks, 
+              email header spoofing, multi-stage payloads, and sophisticated social engineering. 
+              Identify all phishing attempts, explain advanced red flags, and propose 
+              enterprise-level prevention strategies.
+            </p>
+          </div>
+
+          {/* Challenge Materials */}
+          <div className="mb-6 rounded-xl border-2 border-purple-200 bg-purple-50 p-4">
+            <h4 className="mb-3 font-semibold text-purple-900">Challenge Materials</h4>
+            <div className="space-y-4">
+              <div>
+                <p className="mb-2 text-sm font-semibold text-purple-800">Phishing Email Samples ({emails.length} emails to analyze):</p>
+                <div className="rounded-lg bg-white p-4 max-h-96 overflow-y-auto">
+                  <div className="space-y-3">
+                    {emails.map((email) => (
+                      <div key={email.id} className="border-b border-purple-100 pb-3">
+                        <div className="text-xs font-semibold text-purple-800">
+                          Email #{email.id}: {email.subject}
+                        </div>
+                        <div className="mt-1 text-xs text-slate-600">From: {email.from} | Date: {email.date}</div>
+                        <div className="mt-1 text-sm text-slate-700 line-clamp-2">{email.body.substring(0, 150)}...</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="mt-4 rounded-lg bg-yellow-50 border border-yellow-200 p-3">
+                <p className="text-xs text-yellow-800">
+                  <strong>Note:</strong> Review each email carefully. Look for suspicious domains, homograph attacks, urgent language, generic greetings, suspicious URLs, poor grammar, and other red flags. Identify all phishing emails and explain the advanced techniques used.
+                </p>
+              </div>
+            </div>
+          </div>
+
           <h3 className="mb-4 text-2xl font-bold">
-            Analyze the 15 emails below and identify all phishing attempts
+            Analyze the {emails.length} emails below and identify all phishing attempts
           </h3>
           <p className="mb-6 text-slate-600">
             These emails include advanced evasion techniques such as homograph attacks, 

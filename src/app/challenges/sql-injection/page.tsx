@@ -241,14 +241,34 @@ $$ LANGUAGE plpgsql;`}</code>
 
         {/* Challenge Section */}
         <div className="rounded-2xl bg-white p-6 shadow">
-          <h3 className="mb-4 text-2xl font-bold">
-            Multi-Vector SQL Injection Analysis: Identify vulnerabilities across multiple database systems
-          </h3>
-          <p className="mb-6 text-slate-600">
-            Analyze complex SQL injection vulnerabilities across MySQL, PostgreSQL, and MSSQL. 
-            Identify union-based, blind, second-order, and stacked query injection vectors. 
-            Craft exploit payloads and implement comprehensive secure coding solutions.
-          </p>
+          <div className="mb-6">
+            <h3 className="mb-2 text-2xl font-bold">Challenge Description</h3>
+            <p className="text-slate-700">
+              Analyze complex SQL injection vulnerabilities across MySQL, PostgreSQL, and MSSQL. 
+              Identify union-based, blind, second-order, and stacked query injection vectors. 
+              Craft exploit payloads and implement comprehensive secure coding solutions.
+            </p>
+          </div>
+
+          {/* Challenge Materials */}
+          <div className="mb-6 rounded-xl border-2 border-purple-200 bg-purple-50 p-4">
+            <h4 className="mb-3 font-semibold text-purple-900">Challenge Materials</h4>
+            <div className="space-y-4">
+              <div>
+                <p className="mb-2 text-sm font-semibold text-purple-800">Vulnerable Application Code:</p>
+                <div className="rounded-lg bg-white p-4">
+                  <pre className="overflow-x-auto text-xs font-mono">
+                    <code>{vulnerableCode}</code>
+                  </pre>
+                </div>
+              </div>
+              <div className="mt-4 rounded-lg bg-yellow-50 border border-yellow-200 p-3">
+                <p className="text-xs text-yellow-800">
+                  <strong>Note:</strong> Review each function for SQL injection vulnerabilities. Identify the database system (MySQL, PostgreSQL, MSSQL), the injection type (union-based, blind, time-based, second-order, stacked queries), and craft appropriate exploit payloads. Provide secure remediation code for each vulnerability.
+                </p>
+              </div>
+            </div>
+          </div>
 
           <div className="mb-6">
             <h4 className="mb-3 font-semibold">Vulnerable Code:</h4>
