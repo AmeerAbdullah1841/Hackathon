@@ -305,7 +305,7 @@ export function TeamDashboard({ team, initialAssignments }: Props) {
                             return (
                               <Link
                                 href={`${challengeLink}?team=${team.id}&assignment=${assignment.id}`}
-                                className="block w-full text-center rounded-xl px-4 py-2 text-sm font-semibold bg-purple-600 text-white hover:bg-purple-700 transition"
+                                className="block w-full text-center rounded-xl px-4 py-2 text-sm font-semibold bg-slate-900 text-white hover:bg-slate-800 transition"
                               >
                                 Open Challenge
                               </Link>
